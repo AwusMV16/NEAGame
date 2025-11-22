@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c4e6f80848e2294fbb0ed1dff2d0a7e, type: 3}
+  m_Name: RoomLibrary
+  m_EditorClassIdentifier: 
+  RoomPrefabsA:
+  - {fileID: 6538196538391634121, guid: ede7ed5ea008bb943982de598951e315, type: 3}
+  - {fileID: 6538196538391634121, guid: 64bdf5f20997b004891b12dae023cf33, type: 3}
+  - {fileID: 6538196538391634121, guid: 1067f3c6556916f4f8a74a5860459e5f, type: 3}
+  - {fileID: 6538196538391634121, guid: ae42a6ff96ba09a468b18fc7efdec752, type: 3}
+  RoomPrefabsB:
+  - {fileID: 6538196538391634121, guid: a310001dbbfb85349ab47cbbf67c20b3, type: 3}
+  - {fileID: 6538196538391634121, guid: 89ffd925417156747b53b18e7cb36a67, type: 3}
+  - {fileID: 6538196538391634121, guid: 6c80287fdf84b4444b6dad449bb05d09, type: 3}
+  - {fileID: 6538196538391634121, guid: f86fdca1da89ac14dbaf4642819d4f4e, type: 3}
