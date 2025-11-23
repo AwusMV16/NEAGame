@@ -30,7 +30,6 @@ public class PlayerController : MonoBehaviour, IDamageable
     [SerializeField] private float OverHeatRecoverRate = 0.1f;
     [SerializeField] private float MaxOverHeat = 5f;
     private float OverHeatValue;
-    private bool OverHeating;
     private int baseMaxHealth;
     private float baseRunSpeed;
     private int baseTurretDamage;
@@ -95,6 +94,11 @@ public class PlayerController : MonoBehaviour, IDamageable
     private bool canShoot;
     private float originalRecoveryRate;
     private bool wasTouchingSurface = false;
+    [SerializeField] private AudioSource footstepSource;
+    [SerializeField] private AudioSource ClimbToggleSource;
+    [SerializeField] private AudioSource ShootSource;
+    [SerializeField] private float footstepInterval = 0.35f; // time between steps
+    private float footstepTimer = 0f;
 
     void Awake()
     {
@@ -147,6 +151,28 @@ public class PlayerController : MonoBehaviour, IDamageable
                 climblayerMask                         // Layer to check collisions against
             ) && isUpright;                            // Only count as grounded if the player is upright. **fixes wall hop bug**
 
+
+            // footstep sounds
+            if (rayDown.collider != null && Mathf.Abs(horizontal) > 0.1f)
+            {
+                footstepTimer -= Time.deltaTime;
+
+                if (footstepTimer <= 0f)
+                {
+                    if (!footstepSource.isPlaying)
+                    {
+                        footstepSource.pitch = UnityEngine.Random.Range(0.95f, 1.05f);
+                        footstepSource.Play();
+                    }
+
+                    footstepTimer = footstepInterval;
+                }
+            }
+            else
+            {
+                footstepTimer = 0f; // reset so the step plays instantly on next movement
+            }
+
             // Animation Triggers                       
             animator.SetBool("moving", Math.Abs(horizontal) > 0);
             animator.SetBool("Normal", !climbEnabled);
@@ -165,6 +191,14 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (Input.GetKeyDown(KeyCode.LeftControl) && !isHealing && Energy == MaxEnergy) StartCoroutine(HealRoutine());
 
             if (!isShooting) timeSinceLastShot += Time.deltaTime;
+            if (isShooting)
+            {
+                if (!ShootSource.isPlaying) ShootSource.Play();
+            }
+            else
+            {
+                ShootSource.Stop();
+            }
 
 
             EnableCameraShake(isShooting);
@@ -827,6 +861,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     void ToggleClimb()
     {
+        ClimbToggleSource.Play();
         climbEnabled = !climbEnabled;
 
         if (climbEnabled)
