@@ -27,12 +27,9 @@ public class RoomGen : MonoBehaviour
 
     void Start()
     {
-        if (!IsStartingRoom)
-        {
-            
-        }
         if (!temp)
-        {StartCoroutine(WaitAndCheck());
+        {
+            StartCoroutine(WaitAndCheck());
             createNextRoom();
         }
         if (!IsStartingRoom)
@@ -68,7 +65,6 @@ public class RoomGen : MonoBehaviour
             {
                 rotation = -90f;
             }
-
             
 
             int randomIndex = UnityEngine.Random.Range(0, RoomTypes[nextRoomType].Length);
