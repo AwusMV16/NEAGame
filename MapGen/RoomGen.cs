@@ -11,7 +11,7 @@ public class RoomGen : MonoBehaviour
     private float rotation = -90f;
     public Transform exitPoint;
     public Transform entryPoint;
-    private Dictionary<string, GameObject[]> RoomTypes;
+    private GameObject[] Pieces;
     private string nextRoomType;
     public string previousRoomType;
     public bool hasCollision = false;
@@ -22,7 +22,7 @@ public class RoomGen : MonoBehaviour
 
     void Awake()
     {
-        RoomTypes = new Dictionary<string, GameObject[]> { { "A", library.RoomPrefabsA }, { "B", library.RoomPrefabsB } };
+        Pieces = library.RoomPrefabs;
     }
 
     void Start()
@@ -50,30 +50,31 @@ public class RoomGen : MonoBehaviour
         {
             if (MaxOfSameType)
             {
-                nextRoomType = previousRoomType == "A" ? "B" : "A";
+                nextRoomType = previousRoomType == "Normal" ? "Mirrored" : "Normal";
             }
             else
             {
-                nextRoomType = UnityEngine.Random.Range(0, 2) == 1 ? "A" : "B";
+                nextRoomType = UnityEngine.Random.Range(0, 2) == 1 ? "Normal" : "Mirrored";
             }
 
-            if ((previousRoomType == "B" && nextRoomType == "A") || (previousRoomType == "B" && nextRoomType == "B"))
+            if ((previousRoomType == "Mirrored" && nextRoomType == "Normal") || (previousRoomType == "Mirrored" && nextRoomType == "Mirrored"))
             {
                 rotation = 90f;
             }
-            else if (previousRoomType == "A" && nextRoomType == "B")
+            else if (previousRoomType == "Normal" && nextRoomType == "Mirrored")
             {
                 rotation = -90f;
             }
-            
 
-            int randomIndex = UnityEngine.Random.Range(0, RoomTypes[nextRoomType].Length);
+            int randomIndex = UnityEngine.Random.Range(0, Pieces.Length);
 
             GameObject nextRoom = Instantiate(
-                RoomTypes[nextRoomType][randomIndex],
+                Pieces[randomIndex],
                 exitPoint.position,
                 Quaternion.Euler(0f, 0f, transform.eulerAngles.z + rotation)
             );
+            //mirror the piece if B was chosen
+            if(nextRoomType == "Mirrored") nextRoom.transform.localScale = Vector3.Scale(nextRoom.transform.localScale, new Vector3(-1, 1, 1));
             // Now align entrance to exit
             RoomGen nextRoomScript = nextRoom.GetComponent<RoomGen>();
             Vector3 offset = exitPoint.position - nextRoomScript.entryPoint.position;
@@ -95,7 +96,7 @@ public class RoomGen : MonoBehaviour
         }
         else if (remainingChildRooms == 0 && !hasCollision)
         {
-            if ((previousRoomType == "A" && transform.eulerAngles.z == 0) || (previousRoomType == "B" && math.abs(transform.eulerAngles.z) == 180))
+            if ((previousRoomType == "Normal" && transform.eulerAngles.z == 0) || (previousRoomType == "Mirrored" && math.abs(transform.eulerAngles.z) == 180))
             {
                 if (nextArea != null)
                 {
