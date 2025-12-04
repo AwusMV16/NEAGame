@@ -5,10 +5,14 @@ public class UIManager : MonoBehaviour
 {
     [SerializeField] private Canvas HUDUI;
     [SerializeField] private UIDocument Settings;
+    [SerializeField] private Canvas LoadingScreen;
+    private LoadingScreen LoadingScreenScript;
     private VisualElement settingsRoot;
+    private bool finishedLoading;
 
     void Start()
     {
+        if (LoadingScreen != null) LoadingScreenScript = LoadingScreen.GetComponent<LoadingScreen>();
         // rootVisualElement is guaranteed to be ready in Start
         settingsRoot = Settings.rootVisualElement;
 
@@ -18,7 +22,19 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        GameObject lastArea = GameObject.FindGameObjectWithTag("LastArea");
+        if (lastArea == null)
+        {
+            return;
+        }
+        else
+        {
+            if (GameSession.loadSavedGame && !finishedLoading) SaveManager.LoadPlayer();
+            finishedLoading = true;
+            HideLoadingScreen();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape) && finishedLoading)
         {
             if (settingsRoot.style.display == DisplayStyle.None)
                 ShowSettings();
@@ -39,5 +55,10 @@ public class UIManager : MonoBehaviour
         settingsRoot.style.display = DisplayStyle.None;
         if(HUDUI != null) HUDUI.enabled = true;
         Time.timeScale = 1f;
+    }
+
+    public void HideLoadingScreen()
+    {
+        LoadingScreenScript.Fade();
     }
 }

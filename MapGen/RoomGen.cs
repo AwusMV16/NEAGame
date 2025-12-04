@@ -19,6 +19,7 @@ public class RoomGen : MonoBehaviour
     public GameObject nextArea;
     public SectionLibrary library;
     [SerializeField] private bool temp;
+    public int seed;
 
     void Awake()
     {
@@ -27,6 +28,7 @@ public class RoomGen : MonoBehaviour
 
     void Start()
     {
+        UnityEngine.Random.InitState(seed);
         if (!temp)
         {
             StartCoroutine(WaitAndCheck());
@@ -40,6 +42,9 @@ public class RoomGen : MonoBehaviour
     
     private IEnumerator WaitAndCheck()
     {
+        yield return new WaitForFixedUpdate();
+        yield return new WaitForFixedUpdate();
+        yield return new WaitForFixedUpdate();
         yield return new WaitForFixedUpdate();
         CheckForOverlaps();
     }
@@ -88,8 +93,9 @@ public class RoomGen : MonoBehaviour
             nextRoomScript.previousRoomType = nextRoomType;
             nextRoomScript.hasCollision = hasCollision;
             nextRoomScript.roomParent = roomParent;
+            nextRoomScript.seed = GetNextSeed(seed, remainingChildRooms);
             if (nextArea != null)
-            {
+            {   
                 nextRoomScript.nextArea = nextArea;
             }
             StartCoroutine(WaitAndCheck());
@@ -161,4 +167,10 @@ public class RoomGen : MonoBehaviour
             }
         }
     }
+
+    int GetNextSeed(int parentSeed, int roomNumber)
+    {
+        return (parentSeed * 31) ^ roomNumber; // simple deterministic hash
+    }
 }
+

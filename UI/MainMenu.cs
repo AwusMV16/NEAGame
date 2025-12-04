@@ -1,6 +1,12 @@
 using UnityEngine;
 using UnityEngine.UIElements;
-using System.Linq;
+// using System.Linq;
+
+public static class GameSession
+{
+    public static bool loadSavedGame = false;
+    public static bool playerSaveLoaded = false;
+}
 
 public class MainMenu : MonoBehaviour
 {
@@ -19,12 +25,28 @@ public class MainMenu : MonoBehaviour
         UIManager = FindAnyObjectByType<UIManager>();
         root = mainMenuUI.rootVisualElement;
 
-        continueButton = root.Q<Button>(null, "Row"); // gets first button with class Row
-        NewGameButton = root.Q<Button>("NewGame");
+        continueButton = root.Q<Button>("Continue", "Row");
+        NewGameButton = root.Q<Button>("NewGame", "Row");
         settingsButton = root.Q<Button>("Settings");
         ExitButton = root.Q<Button>("Exit");
-        continueButton = root.Q<Button>("Continue");
-        LoadButton = root.Q<Button>("LoadSave");
+
+        if (continueButton != null)
+        {
+            continueButton.clicked += () =>
+            {
+                GameSession.loadSavedGame = true; // tell game scene to load save
+                UnityEngine.SceneManagement.SceneManager.LoadScene("Main Game");
+            };
+        }
+
+        if (NewGameButton != null)
+        {
+            NewGameButton.clicked += () =>
+            {
+                GameSession.loadSavedGame = false; // tell game scene not to load save
+                UnityEngine.SceneManagement.SceneManager.LoadScene("Main Game");
+            };
+        }
 
         if (settingsButton != null)
         {

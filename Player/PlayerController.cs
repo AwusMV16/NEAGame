@@ -3,102 +3,136 @@ using System.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using Unity.Cinemachine;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour, IDamageable
 {
+    // ---------- TRANSFORMS & OBJECTS ----------
+    [Header("Player References")]
     [SerializeField] private Transform rightOrigin;
     [SerializeField] private Transform leftOrigin;
     [SerializeField] private Transform groundCheck;
+    [SerializeField] private Transform muzzle;
+    [SerializeField] private Transform firePoint;
+    [SerializeField] private Transform originalSpawnPoint;
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private GameObject muzzleFlashPrefab;
-    [SerializeField] private Transform muzzle;
     [SerializeField] private GameObject gun;
-    [SerializeField] private Transform firePoint;
-    [SerializeField] private int turretDamage = 20;
     [SerializeField] private GameObject MainCamera;
     [SerializeField] private GameObject AOEBlastPrefab;
     [SerializeField] private GameObject HealPrefab;
     [SerializeField] private GameObject XpPrefab;
-    [SerializeField] private LayerMask climblayerMask;
+
+    // ---------- CAMERA & CINEMACHINE ----------
+    [Header("Camera Settings")]
+    private CinemachineCamera cinemachineCam;
+    private CinemachineBasicMultiChannelPerlin camNoise;
+    private bool CamFollow = false;
+
+    // ---------- PLAYER STATS ----------
+    [Header("Stats")]
+    [SerializeField] private int turretDamage = 20;
+    public int MaxHealth;
+    public int Health = 100;
+    public int MaxEnergy;
+    public int Energy;
+    public int Level = 1;
+    public int Xp;
+    public int BaseXP = 50;
+    public float XPLevelMultiplier = 1.2f;
+    [SerializeField] private float invincibilityDuration = 1.0f;
+    private int baseMaxHealth;
+    private int baseTurretDamage;
+    private int baseMaxEnergy;
+    private float baseRunSpeed;
+
+    // ---------- MOVEMENT ----------
+    [Header("Movement Settings")]
+    [SerializeField] private float runSpeed = 20f;
     [SerializeField] private float jumpPower;
-    [SerializeField] private float runSpeed = 20.0f;
-    [SerializeField] private float bulletSpeed = 10f;
     [SerializeField] private float climbCheckDistance = 2f;
     [SerializeField] private float coyoteTime = 0.1f;
     [SerializeField] private float jumpBufferTime = 0.2f;
-    [SerializeField] private float invincibilityDuration = 1.0f;
-    [SerializeField] private float OverHeatRecoverRate = 0.1f;
-    [SerializeField] private float MaxOverHeat = 5f;
-    private float OverHeatValue;
-    private int baseMaxHealth;
-    private float baseRunSpeed;
-    private int baseTurretDamage;
-    private int baseMaxEnergy;
-    [SerializeField] private int MaxHealth;
-    [SerializeField] private Canvas DeathScreen;
-    public int Health = 100;
-    private HealthBar healthBar;
-    private NextLevelRadial nextLevelRadial;
-    private EnergyBar energyBar;
-    private LevelText levelText;
-    private Vector3 lastPositionBeforeDeath;
-    private Vector3 originalCamOffset;
-    private bool dead;
-    private float jumpBufferCounter;
-    private float coyoteTimeCounter;
-    private float angle;
     private float horizontal;
     private float lastHorizontal;
-    private bool isInvincible = false;
-    private bool hasRotated = false;
-    public bool climbEnabled = true;
-    private bool canClimb = false;
     private bool isUpright;
     private bool isUpsideDown;
     private bool isRightSide;
     private bool isLeftSide;
     private bool isGrounded;
-    private bool isInBossRoom;
-    private bool[] hits;
-    private Coroutine damageFlashRoutine;
-    private Rigidbody2D body;
-    private Animator animator;
-    private SpriteRenderer spriteRenderer;
+    public bool climbEnabled = true;
+    private bool canClimb = false;
+    private bool wasTouchingSurface = false;
+
+    // ---------- COMBAT ----------
+    [Header("Combat Settings")]
+    [SerializeField] private float bulletSpeed = 10f;
+    [SerializeField] private float shootInterval;
+    [SerializeField] private float spreadAngle;
+    private bool isShooting;
+    private bool canShoot;
+    private float timeSinceLastShot;
+    [SerializeField] private float OverHeatRecoverRate = 0.1f;
+    [SerializeField] private float MaxOverHeat = 5f;
+    private float OverHeatValue;
+    private float originalRecoveryRate;
+    private OverheatBar OverheatMeter;
+
+    // ---------- HEALING ----------
+    [Header("Healing Settings")]
+    private bool isHealing;
+
+    // ---------- FX & AUDIO ----------
+    [Header("Audio Sources")]
+    [SerializeField] private AudioSource footstepSource;
+    [SerializeField] private AudioSource ClimbToggleSource;
+    [SerializeField] private AudioSource ShootSource;
+    [SerializeField] private float footstepInterval = 0.35f;
+    private float footstepTimer = 0f;
+
+    // ---------- UI REFERENCES ----------
+    [Header("UI References")]
+    [SerializeField] private Canvas DeathScreen;
+    private HealthBar healthBar;
+    private EnergyBar energyBar;
+    private NextLevelRadial nextLevelRadial;
+    private LevelText levelText;
+
+    // ---------- LAYERS ----------
+    [Header("Layers")]
+    [SerializeField] private LayerMask climblayerMask;
+
+    // ---------- INTERNAL STATE ----------
+    private bool dead;
+    private float jumpBufferCounter;
+    private float coyoteTimeCounter;
+    private float angle;
     private Vector3 directionToMouse;
+    private bool hasRotated = false;
+    private bool isInvincible = false;
+    private Coroutine damageFlashRoutine;
+    private Vector3 lastPositionBeforeDeath;
+    private bool isInBossRoom;
+
+    // ---------- RAYS ----------
     private RaycastHit2D rayDown;
     private RaycastHit2D rayUp;
     private RaycastHit2D rayLeft;
     private RaycastHit2D rayRight;
     private RaycastHit2D[] rays;
-    private bool CamFollow = false;
-    public int Xp;
-    public int MaxEnergy;
-    public int Energy;
-    public int Level = 1;
-    public int BaseXP = 50;
-    public float XPLevelMultiplier = 1.2f;
-    private bool isHealing;
-    private SpawnManager spawnManager;
-    [SerializeField] private Transform originalSpawnPoint;
-    // private UIManager uiManager;
+    private bool[] hits;
+
+    // ---------- COMPONENTS ----------
+    private Rigidbody2D body;
+    private Animator animator;
+    private SpriteRenderer spriteRenderer;
     private Settings settings;
-    [SerializeField] private float shootInterval;
-    private bool isShooting;
-    [SerializeField] private float spreadAngle;
-    private CinemachineCamera cinemachineCam;
-    private CinemachineBasicMultiChannelPerlin camNoise;
-    private OverheatBar OverheatMeter;
+    private SpawnManager spawnManager;
 
-    private float timeSinceLastShot;
-
-    private bool canShoot;
-    private float originalRecoveryRate;
-    private bool wasTouchingSurface = false;
-    [SerializeField] private AudioSource footstepSource;
-    [SerializeField] private AudioSource ClimbToggleSource;
-    [SerializeField] private AudioSource ShootSource;
-    [SerializeField] private float footstepInterval = 0.35f; // time between steps
-    private float footstepTimer = 0f;
+    // ---------- SAVE SYSTEM ----------
+    private float saveTimer = 0f;
+    private float saveInterval = 5f;
+    private bool loaded;
 
     void Awake()
     {
@@ -128,13 +162,30 @@ public class PlayerController : MonoBehaviour, IDamageable
         UpdateEnergy();
         UpdateHealth();
 
-        // store the original offset relative to player
-        originalCamOffset = MainCamera.transform.position - transform.position;
         originalRecoveryRate = OverHeatRecoverRate;
     }
 
     void Update()
     {
+        saveTimer += Time.deltaTime;
+
+        if (saveTimer >= saveInterval)
+        {
+            saveTimer = 0f;
+            if(GameSession.playerSaveLoaded)
+            {
+                SaveManager.SavePlayer();
+            }
+        }
+
+        if (GameSession.playerSaveLoaded && !loaded)
+        {
+            SaveManager.LoadPlayer();
+            SaveManager.LoadBosses(spawnManager);
+            SaveManager.LoadSpawnAnchor();
+            loaded = true;
+        }
+
         if (Time.timeScale == 0f) return;
         if (!dead)
         {
@@ -173,35 +224,39 @@ public class PlayerController : MonoBehaviour, IDamageable
                 footstepTimer = 0f; // reset so the step plays instantly on next movement
             }
 
-            // Animation Triggers                       
-            animator.SetBool("moving", Math.Abs(horizontal) > 0);
-            animator.SetBool("Normal", !climbEnabled);
-
-            HandleJump();
-            Drawrays();
-            Move();
-            HandleFlip();
-            AimTurret();
-
-            // Inputs
-            // if (Input.GetMouseButtonDown(0)) Shoot(directionToMouse);
-            if (Input.GetMouseButton(0) && !isShooting && canShoot){ timeSinceLastShot = 0f; StartCoroutine(Shoot()); } 
-            if (Input.GetKeyDown(KeyCode.F) && !climbEnabled && !isGrounded && Energy >= MaxEnergy / 2) AOEAttack();
-            if (Input.GetKeyDown(KeyCode.LeftShift) && canClimb) ToggleClimb();
-            if (Input.GetKeyDown(KeyCode.LeftControl) && !isHealing && Energy == MaxEnergy) StartCoroutine(HealRoutine());
-
-            if (!isShooting) timeSinceLastShot += Time.deltaTime;
-            if (isShooting)
+            if (GameSession.playerSaveLoaded)
             {
-                if (!ShootSource.isPlaying) ShootSource.Play();
-            }
-            else
-            {
-                ShootSource.Stop();
-            }
+                // Animation Triggers                       
+                animator.SetBool("moving", Math.Abs(horizontal) > 0);
+                animator.SetBool("Normal", !climbEnabled);
+
+                HandleJump();
+                Drawrays();
+                Move();
+                HandleFlip();
+                AimTurret();
+
+                // Inputs
+                // if (Input.GetMouseButtonDown(0)) Shoot(directionToMouse);
+                if (Input.GetMouseButton(0) && !isShooting && canShoot){ timeSinceLastShot = 0f; StartCoroutine(Shoot()); } 
+                if (Input.GetKeyDown(KeyCode.F) && !climbEnabled && !isGrounded && Energy >= MaxEnergy / 2) AOEAttack();
+                if (Input.GetKeyDown(KeyCode.LeftShift) && canClimb) ToggleClimb();
+                if (Input.GetKeyDown(KeyCode.LeftControl) && !isHealing && Energy == MaxEnergy) StartCoroutine(HealRoutine());
+
+                if (!isShooting) timeSinceLastShot += Time.deltaTime;
+                if (isShooting)
+                {
+                    if (!ShootSource.isPlaying) ShootSource.Play();
+                }
+                else
+                {
+                    ShootSource.Stop();
+                }
 
 
-            EnableCameraShake(isShooting);
+                EnableCameraShake(isShooting);
+            }
+            
             float reducedRecoveryRate = originalRecoveryRate * 0.25f;
             if (!isShooting && OverHeatValue > 0)
             {
@@ -376,7 +431,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         Xp = 0;
         UpdateRemainingXP();
         Level = Math.Max(Level - 1, 1);
-        levelText.updateLevelText(Level);
+        UpdateLevelText(Level);
 
 
         Health = MaxHealth;
@@ -393,6 +448,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         
         // Respawn the boss if already encountered
         spawnManager.ResetBoss();
+
+        // SaveManager.SavePlayer();
     }
 
     void DropXp()
@@ -441,45 +498,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         rayUp = Physics2D.Raycast(transform.position, transform.up, climbCheckDistance, climblayerMask);
 
         Vector2 capsuleSize = new Vector2(0.2f, 0.2f); // small capsule "tip"
-        // rayDown = Physics2D.CapsuleCast(
-        //     transform.position,
-        //     capsuleSize,
-        //     CapsuleDirection2D.Vertical,
-        //     0,
-        //     -transform.up,
-        //     climbCheckDistance * 1.55f,
-        //     climblayerMask
-        // );
-
-        // rayLeft = Physics2D.CapsuleCast(
-        //     transform.position,
-        //     capsuleSize,
-        //     CapsuleDirection2D.Vertical,
-        //     0,
-        //     -transform.right,
-        //     climbCheckDistance * 0.6f,
-        //     climblayerMask
-        // );
-
-        // rayRight = Physics2D.CapsuleCast(
-        //     transform.position,
-        //     capsuleSize,
-        //     CapsuleDirection2D.Vertical,
-        //     0,
-        //     transform.right,
-        //     climbCheckDistance * 0.6f,
-        //     climblayerMask
-        // );
-
-        // rayUp = Physics2D.CapsuleCast(
-        //     transform.position,
-        //     capsuleSize,
-        //     CapsuleDirection2D.Vertical,
-        //     0,
-        //     transform.up,
-        //     climbCheckDistance,
-        //     climblayerMask
-        // );
 
         // Store all rays in an array for easier iteration and collision checking
         rays = new RaycastHit2D[4];
@@ -606,14 +624,10 @@ public class PlayerController : MonoBehaviour, IDamageable
             Health = Mathf.Min(Health, MaxHealth);
             // MaxHealth = Mathf.FloorToInt(MaxHealth * 1.2f);
         }
-        UpdateHealth();
-
-        // turretDamage = Mathf.FloorToInt(turretDamage * 1.1f);
-        // runSpeed = Mathf.FloorToInt(runSpeed * 1.07f);
-        // MaxEnergy = Mathf.FloorToInt(MaxEnergy * 0.95f);    
+        UpdateHealth();  
     }
 
-    void UpdateStatsFromLevel()
+    public void UpdateStatsFromLevel()
     {
         MaxHealth      = Mathf.FloorToInt(baseMaxHealth * Mathf.Pow(1.3f, Level - 1));
         turretDamage   = Mathf.FloorToInt(baseTurretDamage * Mathf.Pow(1.2f, Level - 1));
@@ -775,8 +789,14 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void UpdateHealth()
     {
+        // SaveManager.SavePlayer();
         if (healthBar != null)
             healthBar.UpdateHealth(Health, MaxHealth);
+    }
+
+    public void UpdateLevelText(int lvl)
+    {
+        levelText.updateLevelText(lvl);
     }
 
     private void UpdateRemainingXP()
@@ -792,9 +812,27 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         FlashRed();
         Health -= damage;
+        UpdateHealth();
+
         if (settings != null)
             settings.IncrementStats(damageTaken: damage);
+
+        StartCoroutine(InvincibilityFrames());
+        lastPositionBeforeDeath = transform.position;
+    }
+
+    public void TakeDamagePercent(float percent)
+    {
+        if (isInvincible)
+            return;
+            
+        FlashRed();
+        Health -= Mathf.FloorToInt(Health * percent); 
+ 
         UpdateHealth();
+
+        if (settings != null)
+            settings.IncrementStats(damageTaken: Mathf.FloorToInt(MaxHealth / percent));
 
         StartCoroutine(InvincibilityFrames());
         lastPositionBeforeDeath = transform.position;
@@ -827,7 +865,6 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         transform.position = originPosition;            // Snap player to the corner pivot point
         transform.Rotate(Vector3.forward, angle);       // Rotate the player around the Z-axis by the specified angle
-        // transform.position = originPosition;            // Re-snap to the pivot point to avoid drift during rotation
     }
 
     // Rotates the player around its current center by a given angle 
@@ -843,16 +880,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         Debug.DrawRay(transform.position, transform.up * climbCheckDistance * 1.5f, new Color(0, 0.2f, 0.3f));
         Debug.DrawRay(transform.position, -transform.right * climbCheckDistance * 0.55f, new Color(0.3f, 0, 0));
         Debug.DrawRay(transform.position, transform.right * climbCheckDistance * 0.55f, new Color(1, 0.2f, 0.2f));
-
-        // Vector2 capsuleSize = new Vector2(0.2f, 0.2f);
-
-        // DrawDebugCapsuleCast(transform.position, capsuleSize, -transform.up, climbCheckDistance * 1.55f, new Color(0, 0.3f, 0));
-        // DrawDebugCapsuleCast(transform.position, capsuleSize, transform.up, climbCheckDistance, new Color(0, 0.2f, 0.3f));
-        // DrawDebugCapsuleCast(transform.position, capsuleSize, -transform.right, climbCheckDistance * 0.6f, new Color(0.3f, 0, 0));
-        // DrawDebugCapsuleCast(transform.position, capsuleSize, transform.right, climbCheckDistance * 0.6f, new Color(1, 0.2f, 0.2f));
     }
-
-    
 
     void HandleFlip()
     {

@@ -6,6 +6,7 @@ public class SpawnAnchor : MonoBehaviour
     public bool isActive;
     [SerializeField] private GameObject text;
     private SpawnManager spawnManager;
+    public string ID;
 
     void Awake()
     {
@@ -19,11 +20,17 @@ public class SpawnAnchor : MonoBehaviour
             text.SetActive(true);
             if (Input.GetKey(KeyCode.E))
             {
-                SpawnManager spawnManagerScript = spawnManager.GetComponent<SpawnManager>();
-                spawnManagerScript.SetActiveAnchor(gameObject);
-                text.SetActive(false);
+                Activate();
             }
         }
+    }
+
+    public void Activate()
+    {
+        SpawnManager spawnManagerScript = spawnManager.GetComponent<SpawnManager>();
+        spawnManagerScript.SetActiveAnchor(gameObject);
+        SaveManager.SaveSpawnAnchor(ID);
+        text.SetActive(false);
     }
 
     void OnTriggerEnter2D(Collider2D col)

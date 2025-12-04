@@ -53,6 +53,13 @@ public class SettingsMainMenu : MonoBehaviour
         var statsContainer = root.Q<VisualElement>("StatsContainer");
         statsContainer.style.display = DisplayStyle.None;
 
+        var respawnButton = root.Q<Button>("RespawnButton");
+        respawnButton.style.display = DisplayStyle.None;
+
+        var mainmenuButton = root.Q<Button>("MainMenuButton");
+        mainmenuButton.style.display = DisplayStyle.None;
+
+
         // totalTimeSpent = 0;
         // totalEnemiesDefeated = 0;
         // totalDamageDealt = 0;

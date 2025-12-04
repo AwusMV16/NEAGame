@@ -1,5 +1,3 @@
-// using System.Numerics;
-// using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class RollerEnemy : MonoBehaviour, IDamageable, IEnemy

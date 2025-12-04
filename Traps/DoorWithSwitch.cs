@@ -7,10 +7,12 @@ public class DoorWithSwitch : MonoBehaviour
     private bool playerInRange = false;
     private Animator anim;
     [SerializeField] private GameObject text;
+    public string ID;
 
     void Start()
     {
         anim = GetComponent<Animator>();
+        LoadState();
     }
     void Update()
     {
@@ -26,6 +28,7 @@ public class DoorWithSwitch : MonoBehaviour
                     doorAnim.SetTrigger("Open");
                     anim.SetTrigger("Open");
                     text.SetActive(false);
+                    SaveState();
                 }
             }
         }
@@ -52,6 +55,28 @@ public class DoorWithSwitch : MonoBehaviour
             playerInRange = false;
             text.SetActive(false);
             
+        }
+    }
+
+    private void SaveState()
+    {
+        var data = SaveManager.Load();
+        data[$"Door_{ID}"] = open ? "1" : "0"; // save as 1=open, 0=closed
+        SaveManager.Save(data);
+    }
+
+    private void LoadState()
+    {
+        var data = SaveManager.Load();
+        if (data.TryGetValue($"Door_{ID}", out var state))
+        {
+            open = state == "1";
+            if (open)
+            {
+                Animator doorAnim = door.GetComponent<Animator>();
+                if (doorAnim != null) doorAnim.SetTrigger("Open");
+                anim.SetTrigger("Open");
+            }
         }
     }
 }

@@ -36,7 +36,10 @@ public class AcidTrap : MonoBehaviour
             if (player != null)
             {
                 // apply immediate damage upon touching the acid
-                player.TakeDamage(damage);
+                // player.TakeDamage(damage);
+
+                PlayerController player = other.GetComponent<PlayerController>();
+                player.TakeDamagePercent(50);
 
                 // reset the damage tick timer
                 lastDamageTime = Time.time;

@@ -6,7 +6,6 @@ using UnityEngine;
 
 public class SpikeTrap : MonoBehaviour
 {
-    [SerializeField] private int damage = 20;
     private float lastDamageTime = -Mathf.Infinity;
     
     private Animator animator;
@@ -24,12 +23,9 @@ public class SpikeTrap : MonoBehaviour
             // check if the damage cooldown hasnt finished
             if (Time.time - lastDamageTime < 1) return; // still on cooldown, skip damage
 
-            // get the damage interface from damageable entity
-            IDamageable target = other.collider.GetComponent<IDamageable>();
-            target?.TakeDamage(damage);
-
             // disable the player climb mode if hit
             PlayerController player = other.collider.GetComponent<PlayerController>();
+            player.TakeDamagePercent(0.5f);
             player.climbEnabled = false;
 
             // push the player away from the spike

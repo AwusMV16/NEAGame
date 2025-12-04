@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
-using Unity.Cinemachine;
+using UnityEngine.SceneManagement;
 
 public class Settings : MonoBehaviour
 {
@@ -22,7 +22,7 @@ public class Settings : MonoBehaviour
     private float playTimeSeconds;
     private UIManager uiManager;
     private AudioManager audioManager;
-    private float initialSliderValue = 100;
+    public float initialSliderValue = 80;
     
 
     void Start()
@@ -72,6 +72,18 @@ public class Settings : MonoBehaviour
                 uiManager.HideSettings();
             };
         }
+        
+
+        mainmenuButton = root.Q<Button>("MainMenuButton");
+        if (mainmenuButton != null)
+        {
+            mainmenuButton.clicked += () =>
+            {
+                SceneManager.LoadScene(0);
+            };
+        }
+
+        
 
         // Access the stats labels
         var statItemsContainer = root.Q<VisualElement>("StatItemContainer");

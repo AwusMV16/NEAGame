@@ -110,7 +110,8 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
         }
         if (Health <= 0)
         {
-            spawnManager.MarkBossDefeated(0);
+            spawnManager.MarkBossDefeated(0);   
+            SaveManager.SaveBosses(spawnManager);
             GameObject Particle = Instantiate(explosion, transform.position, Quaternion.identity);
             Destroy(Particle, 2f);
             for (int i = 0; i < 25; i++)

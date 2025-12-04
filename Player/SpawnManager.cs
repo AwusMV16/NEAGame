@@ -16,7 +16,7 @@ public class SpawnManager : MonoBehaviour
     private List<EnemySpawner> spawners = new();
 
     [Header("Boss Settings")]
-    [SerializeField] private List<BossData> bosses = new(); // all bosses
+    public List<BossData> bosses = new(); // all bosses
     public GameObject activeBoss;
     private BossData currentBoss;
     private int currentBossIndex = -1;
