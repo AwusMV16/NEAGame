@@ -128,7 +128,7 @@ public static class SaveManager
 
     public static void LoadSeed()
     {
-        var roomGenRoot = Object.FindFirstObjectByType<RoomGenRoot>();
+        var roomGenRoot = GameObject.FindGameObjectWithTag("FirstRoot").GetComponent<RoomGenRoot>();
         if (roomGenRoot == null) return;
 
         var data = Load();

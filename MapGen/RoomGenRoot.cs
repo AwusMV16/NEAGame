@@ -11,12 +11,25 @@ public class RoomGenRoot : MonoBehaviour
 
     void Start()
     {
+        UnityEngine.Random.InitState((int)System.DateTime.UtcNow.Ticks);
+        if (transform.CompareTag("FirstRoot"))
+        {
+            if (!GameSession.loadSavedGame)
+            {
+                seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+                SaveManager.SaveSeed();
+            }
+            Debug.Log(seed);
+        }
+        else
+        {
+            seed = transform.parent.GetComponent<RoomGen>().seed;
+        }
+
         RoomGen roomGenScript = GetComponentInChildren<RoomGen>(); 
         roomGenScript.remainingChildRooms = TunnelLength;
         roomGenScript.IsStartingRoom = true;
         roomGenScript.seed = GetNextSeed(seed, TunnelLength);
-
-        if (transform.CompareTag("FirstRoot")) SaveManager.SaveSeed();
     }
     
     void Update()
@@ -25,7 +38,8 @@ public class RoomGenRoot : MonoBehaviour
         {
             count++;
             // seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-            seed = GetNextSeed(seed + count, TunnelLength);
+            // seed = GetNextSeed(seed + count, TunnelLength);
+            // SaveManager.SaveSeed();
             
             GameObject roomGenerator = Instantiate( 
                 roomGeneratorPrefab, 
@@ -36,7 +50,7 @@ public class RoomGenRoot : MonoBehaviour
             roomGenScript.remainingChildRooms = TunnelLength;
             roomGenScript.IsStartingRoom = true;
             roomGenScript.nextArea = nextArea;
-            roomGenScript.seed = seed;
+            roomGenScript.seed = GetNextSeed(seed + count, TunnelLength);;
         }
     }
 
