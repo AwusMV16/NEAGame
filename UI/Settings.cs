@@ -36,7 +36,7 @@ public class Settings : MonoBehaviour
 
         // Access the volume slider
         volumeSlider = root.Q<Slider>();
-        if (volumeSlider != null)
+        if (volumeSlider != null && audioManager != null)
         {
             volumeSlider.value = initialSliderValue;
             audioManager.SetMasterVolume(volumeSlider.value / 100);

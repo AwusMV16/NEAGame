@@ -16,7 +16,7 @@ public class EnemyHealth : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (enemy != null && enemy.Health != enemy.MaxHealth)
+        if (enemy != null && enemy.Health != enemy.MaxHealth && healthBar != null)
         {
             healthBar.ShowHealth();
             healthBar.UpdateHealth(enemy.Health, enemy.MaxHealth);

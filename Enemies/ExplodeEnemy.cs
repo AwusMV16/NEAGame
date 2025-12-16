@@ -1,4 +1,3 @@
-
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -17,11 +16,10 @@ public class ExplodeEnemy : MonoBehaviour, IDamageable
     private Animator animator;
     public int damage = 20;
     private int currentHealth;
-    [SerializeField] private int maxHealth = 100;
+    public int maxHealth = 100;
     public int Health => currentHealth;
     public int MaxHealth => maxHealth;
     private Settings settings;
-    private SpriteRenderer spriteRenderer;
 
     void Start()
     {
@@ -62,6 +60,12 @@ public class ExplodeEnemy : MonoBehaviour, IDamageable
             // set the velocity back to back and forth movement
             rb.linearVelocity = new Vector2(direction * moveSpeed, rb.linearVelocityY * moveSpeed); 
         }
+    }
+
+    public void InitializeHealth(int startingHealth)
+    {
+        currentHealth = startingHealth;
+        maxHealth = startingHealth;
     }
 
     void OnCollisionEnter2D(Collision2D other)
@@ -112,5 +116,4 @@ public class ExplodeEnemy : MonoBehaviour, IDamageable
             isEngaged = false; // stop pursuing the player
         }
     }
-    
 }

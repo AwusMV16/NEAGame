@@ -4,19 +4,16 @@ using UnityEngine;
 public class RollerEnemyBoss : MonoBehaviour, IDamageable
 {
     [SerializeField] private GameObject explosion;
-    private RaycastHit2D rayRight;
     private Rigidbody2D rb;
     [SerializeField] private float moveSpeed;
     [SerializeField] private GameObject XPOrbPrefab;
     [SerializeField] private float gravityInterval;
     [SerializeField] private float attackCooldown = 5f; // seconds between charges
     private float attackTimer = 0f;
-    [SerializeField] private float chargeMoveSpeed;
     private float gravityTimer = 0f;
     public int Health;
     public int damage;
     private float direction;
-    // private bool canCharge;
     public Transform player; // set from spawner
     private Settings settings;
     private Animator anim;
@@ -24,7 +21,6 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
     private int healthBeforeDamage;
     private SpawnManager spawnManager;
     private BossHealthBar healthBar;
-    private bool crossedThreshold;
     public BossDoorManager doorManager;
 
     void Awake()

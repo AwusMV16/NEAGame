@@ -12,7 +12,7 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
     [SerializeField] private float cloneHealthLimit;
     [SerializeField] private Animator animator;
 
-    [SerializeField] private int maxHealth = 100;
+    public int maxHealth = 100;
     private int currentHealth;
     public int Health => currentHealth;
     public int MaxHealth => maxHealth;

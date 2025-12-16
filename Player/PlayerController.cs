@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using Unity.Cinemachine;
 using UnityEngine.UI;
+using UnityEditor;
 
 public class PlayerController : MonoBehaviour, IDamageable
 {
@@ -163,6 +164,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         UpdateHealth();
 
         originalRecoveryRate = OverHeatRecoverRate;
+        CamFollow = true;
+        isInBossRoom = false;
     }
 
     void Update()
@@ -239,6 +242,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                 // Inputs
                 // if (Input.GetMouseButtonDown(0)) Shoot(directionToMouse);
                 if (Input.GetMouseButton(0) && !isShooting && canShoot){ timeSinceLastShot = 0f; StartCoroutine(Shoot()); } 
+                if (Input.GetMouseButton(1) && !isShooting) StartCoroutine(ShotGun()); 
                 if (Input.GetKeyDown(KeyCode.F) && !climbEnabled && !isGrounded && Energy >= MaxEnergy / 2) AOEAttack();
                 if (Input.GetKeyDown(KeyCode.LeftShift) && canClimb) ToggleClimb();
                 if (Input.GetKeyDown(KeyCode.LeftControl) && !isHealing && Energy == MaxEnergy) StartCoroutine(HealRoutine());
@@ -314,7 +318,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             }
             else
             {
-                targetPos = transform.position + lookAheadOffset;
+                targetPos = transform.position + new Vector3(0, 2f, 1) + lookAheadOffset;
             }
             MainCamera.transform.position = Vector3.Lerp(MainCamera.transform.position, targetPos, Time.deltaTime * 5f); // smooth follow
         }
@@ -529,12 +533,10 @@ public class PlayerController : MonoBehaviour, IDamageable
                 if (horizontal > 0  && hits[1] == false && hits[0] == true)
                 {
                     RotateAroundCorner(rightOrigin.position, -90); // Turn right corner counterclockwise
-                    // hasRotated = true; // Set guard to prevent repeated rotation
                 }
                 else if (horizontal < 0 && hits[2] == false && hits[0] == true)
                 {
                     RotateAroundCorner(leftOrigin.position, 90); // Turn left corner clockwise
-                    // hasRotated = true;
                 }
                 else
                 {
@@ -542,12 +544,10 @@ public class PlayerController : MonoBehaviour, IDamageable
                     if (lastHorizontal > 0)
                     {
                         RotateAroundCorner(rightOrigin.position, -90);
-                        // hasRotated = true;
                     }
                     else if (lastHorizontal < 0)
                     {
                         RotateAroundCorner(leftOrigin.position, 90);
-                        // hasRotated = true;
                     }
                 }
             }
@@ -562,7 +562,6 @@ public class PlayerController : MonoBehaviour, IDamageable
                     {
                         RotateAroundCenter(90); // Rotate clockwise around player's center
                     }
-                    // hasRotated = true;
                 }
                 else
                 {
@@ -570,7 +569,6 @@ public class PlayerController : MonoBehaviour, IDamageable
                     {
                         RotateAroundCenter(-90); // Rotate counterclockwise around player's center
                     }
-                    // hasRotated = true;
                 }
             }
 
@@ -616,23 +614,21 @@ public class PlayerController : MonoBehaviour, IDamageable
         // Increase stats by 20%
         if (Health == MaxHealth)
         {
-            // MaxHealth = Mathf.FloorToInt(MaxHealth * 1.2f);
             Health = MaxHealth;
         }
         else
         {
             Health = Mathf.Min(Health, MaxHealth);
-            // MaxHealth = Mathf.FloorToInt(MaxHealth * 1.2f);
         }
         UpdateHealth();  
     }
 
     public void UpdateStatsFromLevel()
     {
-        MaxHealth      = Mathf.FloorToInt(baseMaxHealth * Mathf.Pow(1.3f, Level - 1));
-        turretDamage   = Mathf.FloorToInt(baseTurretDamage * Mathf.Pow(1.2f, Level - 1));
-        runSpeed       = baseRunSpeed * Mathf.Pow(1.03f, Level - 1);
-        MaxEnergy      = Mathf.FloorToInt(baseMaxEnergy * Mathf.Pow(0.98f, Level - 1));
+        MaxHealth    = Mathf.FloorToInt(baseMaxHealth * Mathf.Pow(1.05f, Level - 1));
+        turretDamage = Mathf.FloorToInt(baseTurretDamage * Mathf.Pow(1.05f, Level - 1));
+        runSpeed     = baseRunSpeed * Mathf.Pow(1.02f, Level - 1);
+        MaxEnergy    = Mathf.FloorToInt(baseMaxEnergy * Mathf.Pow(0.99f, Level - 1));
     }
     
     public void FlashRed()
@@ -704,6 +700,55 @@ public class PlayerController : MonoBehaviour, IDamageable
         //wait n second(s)
         yield return new WaitForSeconds(shootInterval);
 
+        isShooting = false;
+    }
+
+    private IEnumerator ShotGun()
+    {
+        isShooting = true;
+        // Create a muzzle flash effect at the gun when shooting
+        GameObject muzzleFlash = Instantiate(muzzleFlashPrefab, muzzle.position, gun.transform.rotation);
+        muzzleFlash.transform.SetParent(muzzle, true);
+        Destroy(muzzleFlash, 0.1f);
+
+        // shotgun spread angles
+        float leftAngle = -10f;
+        float rightAngle = 10;
+
+        Quaternion centerRot = gun.transform.rotation;
+        Quaternion leftRot   = centerRot * Quaternion.Euler(0, 0, leftAngle);
+        Quaternion rightRot  = centerRot * Quaternion.Euler(0, 0, rightAngle);
+
+        // Spawn a bullet at the fire point, rotated correctly
+        GameObject projectile1 = Instantiate(bulletPrefab, firePoint.position, leftRot);
+        GameObject projectile2 = Instantiate(bulletPrefab, firePoint.position, centerRot);
+        GameObject projectile3 = Instantiate(bulletPrefab, firePoint.position, rightRot);
+        GameObject[] projectiles = new GameObject[]{projectile1, projectile2, projectile3};
+
+        // Set up bullet properties like damage, target, and color
+        foreach (var projectile in projectiles)
+        {
+            projectile.tag = "PlayerBullet";
+
+
+            // projectile.transform.localScale *= 0.6f;
+            Bullet bulletScript = projectile.GetComponent<Bullet>();
+            bulletScript.damage = turretDamage;
+            bulletScript.ignoreTag = tag;
+            bulletScript.attackTag = "Enemy";
+            bulletScript.bulletColor = new Color(1, 0.1f, 0.1f);
+            bulletScript.bulletTag = "PlayerBullet";
+
+            // Apply velocity to the bullet so it moves in the shoot direction
+            Rigidbody2D rb = projectile.GetComponent<Rigidbody2D>();
+            if (rb != null)
+                rb.linearVelocity = projectile.transform.right * bulletSpeed;
+            
+            // Destroy the bullet after 2 seconds to prevent clutter
+            Destroy(projectile, 2f);
+        }
+        
+        yield return new WaitForSeconds(1f);
         isShooting = false;
     }
     
@@ -814,8 +859,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         Health -= damage;
         UpdateHealth();
 
-        if (settings != null)
-            settings.IncrementStats(damageTaken: damage);
+        if (settings != null) settings.IncrementStats(damageTaken: damage);
 
         StartCoroutine(InvincibilityFrames());
         lastPositionBeforeDeath = transform.position;
@@ -938,60 +982,27 @@ public class PlayerController : MonoBehaviour, IDamageable
             CamFollow = true;
             isInBossRoom = false;
         }
-        else if (col.CompareTag("BossArea"))
+        if (col.CompareTag("BossArea"))
         {
             CamFollow = true;
             isInBossRoom = true;
         }
-        
-    }
-    void OnTriggerExit2D(Collider2D col)
-    {
-        if (col.CompareTag("MainArea"))
-        {
-            CamFollow = false;
-        }
-        else if (col.CompareTag("BossArea"))
+        else if (col.CompareTag("RoomView"))
         {
             CamFollow = false;
             isInBossRoom = false;
         }
     }
-    void DrawDebugCapsuleCast(Vector3 origin, Vector2 size, Vector3 direction, float distance, Color color)
+    void OnTriggerExit2D(Collider2D col)
     {
-        // End position of the cast
-        Vector3 endPoint = origin + direction.normalized * distance;
-
-        float radius = size.x * 0.5f;
-
-        // Draw start circle
-        DrawCircle(origin, radius, color);
-
-        // Draw end circle
-        DrawCircle(endPoint, radius, color);
-
-        // Draw capsule sides
-        Vector3 sideOffset = Vector3.Cross(direction.normalized, Vector3.forward) * radius;
-        Debug.DrawLine(origin + sideOffset, endPoint + sideOffset, color);
-        Debug.DrawLine(origin - sideOffset, endPoint - sideOffset, color);
-    }
-
-    void DrawCircle(Vector3 center, float radius, Color color, int segments = 16)
-    {
-        float angleStep = 360f / segments;
-
-        for (int i = 0; i < segments; i++)
+        if (col.CompareTag("BossArea"))
         {
-            float angle1 = Mathf.Deg2Rad * (i * angleStep);
-            float angle2 = Mathf.Deg2Rad * ((i + 1) * angleStep);
-
-            Vector3 p1 = center + new Vector3(Mathf.Cos(angle1), Mathf.Sin(angle1)) * radius;
-            Vector3 p2 = center + new Vector3(Mathf.Cos(angle2), Mathf.Sin(angle2)) * radius;
-
-            Debug.DrawLine(p1, p2, color);
+            CamFollow = false;
+            isInBossRoom = false;
+        }
+        else if (col.CompareTag("RoomView"))
+        {
+            CamFollow = true;
         }
     }
 }
-
-
-

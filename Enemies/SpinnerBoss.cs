@@ -6,9 +6,7 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
     [SerializeField] private GameObject explosion;
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float moveSpeed;
-    [SerializeField] private GameObject spinnerPrefab;
     [SerializeField] private GameObject XPOrbPrefab;
-    [SerializeField] private float cloneHealthLimit;
     [SerializeField] private Animator animator;
     public int Health;
     public int damage = 20;

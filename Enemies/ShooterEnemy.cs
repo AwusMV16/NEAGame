@@ -12,7 +12,6 @@ public class ShooterEnemy : MonoBehaviour, IDamageable, IEnemy
     private float dirX; // move direction in X axis
     private bool isEngaged; 
     private GameObject player;
-    private float distanceToPlayer;
     public float bulletInterval = 1f; // Every 1s
     private float bulletTimer = 0f;
 
@@ -22,7 +21,7 @@ public class ShooterEnemy : MonoBehaviour, IDamageable, IEnemy
     private Animator animator;
     public int damage = 20;
     private int currentHealth;
-    [SerializeField] private int maxHealth = 100;
+    public int maxHealth = 100;
     public int Health => currentHealth;
     public int MaxHealth => maxHealth;
     private Settings settings;
@@ -54,6 +53,12 @@ public class ShooterEnemy : MonoBehaviour, IDamageable, IEnemy
                 Shoot();          // Fire a bullet
             }
         }
+    }
+
+    public void InitializeHealth(int startingHealth)
+    {
+        currentHealth = startingHealth;
+        maxHealth = startingHealth;
     }
 
     void FixedUpdate()

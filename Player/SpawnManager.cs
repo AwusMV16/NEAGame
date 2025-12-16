@@ -14,6 +14,7 @@ public class SpawnManager : MonoBehaviour
 {
     public GameObject ActiveAnchor;
     private List<EnemySpawner> spawners = new();
+    public Transform originalSpawnPoint;
 
     [Header("Boss Settings")]
     public List<BossData> bosses = new(); // all bosses

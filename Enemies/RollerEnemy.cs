@@ -13,7 +13,7 @@ public class RollerEnemy : MonoBehaviour, IDamageable, IEnemy
     [SerializeField] private GameObject XPOrbPrefab;
     private float lastFlipTime = -Mathf.Infinity;
     private int currentHealth;
-    [SerializeField] private int maxHealth = 100;
+    public int maxHealth = 100;
     public int Health => currentHealth;
     public int MaxHealth => maxHealth;
     public int damage = 20;
@@ -54,6 +54,12 @@ public class RollerEnemy : MonoBehaviour, IDamageable, IEnemy
             // Update the last time gravity was flipped
             lastFlipTime = Time.time;
         }
+    }
+
+    public void InitializeHealth(int startingHealth)
+    {
+        currentHealth = startingHealth;
+        maxHealth = startingHealth;
     }
 
     public void TakeDamage(int damage)
