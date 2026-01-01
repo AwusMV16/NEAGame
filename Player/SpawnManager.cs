@@ -14,6 +14,7 @@ public class SpawnManager : MonoBehaviour
 {
     public GameObject ActiveAnchor;
     private List<EnemySpawner> spawners = new();
+    private List<GameObject> runtimeEnemies = new();
     public Transform originalSpawnPoint;
 
     [Header("Boss Settings")]
@@ -48,6 +49,11 @@ public class SpawnManager : MonoBehaviour
     public void RegisterEnemySpawner(EnemySpawner spawner)
     {
         spawners.Add(spawner);
+    }
+
+    public void RegisterRuntimeEnemy(GameObject enemy)
+    {
+        runtimeEnemies.Add(enemy);
     }
 
     public void SpawnBoss(int bossIndex)
@@ -130,6 +136,9 @@ public class SpawnManager : MonoBehaviour
 
     public void RespawnEnemies()
     {
+        // Remove runtime-spawned enemies (clones, summons, etc.)
+        ClearRuntimeEnemies();
+        
         // Remove any destroyed spawners first
         spawners.RemoveAll(s => s == null);
 
@@ -138,6 +147,16 @@ public class SpawnManager : MonoBehaviour
             spawner.DestroyEnemies();
             spawner.SpawnEnemies();
         }
+    }
+
+    public void ClearRuntimeEnemies()
+    {
+        runtimeEnemies.RemoveAll(e => e == null);
+
+        foreach (var enemy in runtimeEnemies)
+            Destroy(enemy);
+
+        runtimeEnemies.Clear();
     }
 
     public bool bossDefeated(int bossIndex)

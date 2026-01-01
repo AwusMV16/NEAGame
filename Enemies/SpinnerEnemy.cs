@@ -90,6 +90,7 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
     // Spawns smaller clones if health before damage was high enough
     void Replicate(int n)
     {
+        SpawnManager spawnManager = FindAnyObjectByType<SpawnManager>();
         if (cloneHealthLimit < healthBeforeDamage)
         {
             for (int i = 0; i < n; i++)
@@ -99,6 +100,8 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
 
                 // Instantiate a clone
                 GameObject child = Instantiate(spinnerPrefab, transform.position + offset, transform.rotation);
+
+                spawnManager?.RegisterRuntimeEnemy(child);
 
                 // Set up the clone's properties
                 SpinnerEnemy enemy = child.GetComponent<SpinnerEnemy>();

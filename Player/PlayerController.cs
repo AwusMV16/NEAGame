@@ -3,8 +3,6 @@ using System.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using Unity.Cinemachine;
-using UnityEngine.UI;
-using UnityEditor;
 
 public class PlayerController : MonoBehaviour, IDamageable
 {
@@ -88,6 +86,8 @@ public class PlayerController : MonoBehaviour, IDamageable
     [SerializeField] private AudioSource footstepSource;
     [SerializeField] private AudioSource ClimbToggleSource;
     [SerializeField] private AudioSource ShootSource;
+    [SerializeField] private AudioSource MusicSource;
+    [SerializeField] private AudioSource TunnelMusicSource;
     [SerializeField] private float footstepInterval = 0.35f;
     private float footstepTimer = 0f;
 
@@ -114,6 +114,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     private Coroutine damageFlashRoutine;
     private Vector3 lastPositionBeforeDeath;
     private bool isInBossRoom;
+    private bool AOEActive;
 
     // ---------- RAYS ----------
     private RaycastHit2D rayDown;
@@ -134,6 +135,9 @@ public class PlayerController : MonoBehaviour, IDamageable
     private float saveTimer = 0f;
     private float saveInterval = 5f;
     private bool loaded;
+
+    // ---------- COROUTINES ----------
+    private Coroutine floatingRoutine;
 
     void Awake()
     {
@@ -172,6 +176,8 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         saveTimer += Time.deltaTime;
 
+        Debug.Log(CamFollow);
+
         if (saveTimer >= saveInterval)
         {
             saveTimer = 0f;
@@ -186,13 +192,16 @@ public class PlayerController : MonoBehaviour, IDamageable
             SaveManager.LoadPlayer();
             SaveManager.LoadBosses(spawnManager);
             SaveManager.LoadSpawnAnchor();
+            settings.LoadStats();
             loaded = true;
         }
 
         if (Time.timeScale == 0f) return;
         if (!dead)
         {
-            horizontal = isHealing ? Input.GetAxisRaw("Horizontal") * 0.25f : Input.GetAxisRaw("Horizontal");
+            horizontal = Input.GetAxisRaw("Horizontal");
+            // horizontal = isHealing ? Input.GetAxisRaw("Horizontal") * 0.25f : Input.GetAxisRaw("Horizontal");
+
             lastHorizontal = Mathf.Abs(horizontal) == 1 ? horizontal : lastHorizontal;
 
             // Check if the player is grounded by casting a horizontal capsule at groundCheck position,
@@ -205,6 +214,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                 climblayerMask                         // Layer to check collisions against
             ) && isUpright;                            // Only count as grounded if the player is upright. **fixes wall hop bug**
 
+            
 
             // footstep sounds
             if (rayDown.collider != null && Mathf.Abs(horizontal) > 0.1f)
@@ -248,15 +258,6 @@ public class PlayerController : MonoBehaviour, IDamageable
                 if (Input.GetKeyDown(KeyCode.LeftControl) && !isHealing && Energy == MaxEnergy) StartCoroutine(HealRoutine());
 
                 if (!isShooting) timeSinceLastShot += Time.deltaTime;
-                if (isShooting)
-                {
-                    if (!ShootSource.isPlaying) ShootSource.Play();
-                }
-                else
-                {
-                    ShootSource.Stop();
-                }
-
 
                 EnableCameraShake(isShooting);
             }
@@ -291,6 +292,8 @@ public class PlayerController : MonoBehaviour, IDamageable
             // Check for death
             if (Health <= 0)
             {
+                if (settings != null) settings.IncrementStats(deaths: 1);
+
                 if(DeathScreen != null) DeathScreen.GetComponentInChildren<Animator>().SetTrigger("Activate");
                 animator.SetBool("Dead", true);
                 dead = true;
@@ -320,7 +323,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             {
                 targetPos = transform.position + new Vector3(0, 2f, 1) + lookAheadOffset;
             }
-            MainCamera.transform.position = Vector3.Lerp(MainCamera.transform.position, targetPos, Time.deltaTime * 5f); // smooth follow
+            MainCamera.transform.position = Vector3.Lerp(MainCamera.transform.position, targetPos, Time.unscaledDeltaTime * 5f); // smooth follow
         }
         else
         {
@@ -330,7 +333,7 @@ public class PlayerController : MonoBehaviour, IDamageable
                 // Apply the same offset toward mouse
                 Vector3 targetPos = nearestAnchor.transform.position + lookAheadOffset;
                 targetPos.z = 0; // ensure camera Z stays correct      
-                MainCamera.transform.position = Vector3.Lerp(MainCamera.transform.position, targetPos, Time.deltaTime * 7.5f);
+                MainCamera.transform.position = Vector3.Lerp(MainCamera.transform.position, targetPos, Time.unscaledDeltaTime * 7.5f);
             }
         }
     }
@@ -349,6 +352,16 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         isHealing = true;
 
+        // --- Camera & Time Setup ---
+        bool wasFollowing = CamFollow; // Store if we were using Anchor or Following
+        CamFollow = true; // Force camera to move to player position
+
+        // 1. Setup Zoom and Time Slow
+        float startFOV = cinemachineCam.Lens.FieldOfView;
+        float targetFOV = startFOV * 0.85f; // Zoom in by 15%
+        Time.timeScale = 0.2f; // Slow time by 50%
+        Time.fixedDeltaTime = 0.02f * Time.timeScale; // Keep physics stable
+
         // Instantiate the healing aura effect
         GameObject effect = Instantiate(
             HealPrefab,
@@ -357,13 +370,18 @@ public class PlayerController : MonoBehaviour, IDamageable
             transform
         );
 
+        if (effect.TryGetComponent(out Animator anim)) anim.updateMode = AnimatorUpdateMode.UnscaledTime;
+
         float holdTime = 0f;
         float requiredHold = 0.45f;
 
         // Keep waiting while key is held and time < requiredHold
         while (Input.GetKey(KeyCode.LeftControl))
         {
-            holdTime += Time.deltaTime;
+            holdTime += Time.unscaledDeltaTime;
+
+            // Smoothly Zoom In
+            cinemachineCam.Lens.FieldOfView = Mathf.Lerp(cinemachineCam.Lens.FieldOfView, targetFOV, Time.unscaledDeltaTime * 5f);
 
             // If player held key long enough → heal
             if (holdTime >= requiredHold)
@@ -374,6 +392,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
                 Energy = 0;
                 UpdateEnergy();
+
+                Destroy(effect);
 
                 break; // done healing
             }
@@ -388,10 +408,23 @@ public class PlayerController : MonoBehaviour, IDamageable
             Destroy(effect);
         }
 
+        // 2. Reset Time and Zoom
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
+        CamFollow = wasFollowing;
+
+        // Continue lerping back until we are very close to original
+        while (Mathf.Abs(cinemachineCam.Lens.FieldOfView - startFOV) > 0.1f)
+        {
+            cinemachineCam.Lens.FieldOfView = Mathf.Lerp(cinemachineCam.Lens.FieldOfView, startFOV, Time.unscaledDeltaTime * 8f);
+            yield return null;
+        }
+        cinemachineCam.Lens.FieldOfView = startFOV; // Final snap for precision
+
         isHealing = false;
     }
 
-        private void AOEAttack()
+    private void AOEAttack()
     {
         Energy -= MaxEnergy / 2;
         UpdateEnergy();
@@ -466,15 +499,28 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     private IEnumerator AOECoroutine()
     {
+        AOEActive = true;
         animator.SetBool("AOE", true); //play the player's attack animation
+
+        // --- Camera & Time Setup ---
+        bool wasFollowing = CamFollow;
+        CamFollow = true; // Snap camera focus to player
+
+        float startFOV = cinemachineCam.Lens.FieldOfView;
+        float targetFOV = startFOV * 0.8f;
+
+        Time.timeScale = 0.4f;
+        Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
         float elapsed = 0f;
         while (elapsed < 0.5f) // keep slow motion for full duration
         {
             // Reduce player velocity each frame
-            body.linearVelocity *= 0.2f;
+            // body.linearVelocity *= 0.2f;
 
-            elapsed += Time.fixedDeltaTime; // or Time.deltaTime if using Update
+            cinemachineCam.Lens.FieldOfView = Mathf.Lerp(cinemachineCam.Lens.FieldOfView, targetFOV, Time.unscaledDeltaTime * 5f);
+
+            elapsed += Time.unscaledDeltaTime;
             yield return new WaitForFixedUpdate(); // wait for next physics frame
         }
 
@@ -482,7 +528,25 @@ public class PlayerController : MonoBehaviour, IDamageable
         GameObject blast = Instantiate(AOEBlastPrefab, transform.position, quaternion.identity);
         AOEBlast blastScript = blast.GetComponent<AOEBlast>();
         blastScript.damage = turretDamage * 5;
+
+        // Set effect to ignore time scale (code-based fallback for the Animator)
+        if (blast.TryGetComponent(out Animator anim)) anim.updateMode = AnimatorUpdateMode.UnscaledTime;
+
+        // --- SMOOTH RETURN ---
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = 0.02f;
+        CamFollow = wasFollowing;
+
         animator.SetBool("AOE", false);
+        AOEActive = false;
+
+        // Lerp back FOV
+        while (Mathf.Abs(cinemachineCam.Lens.FieldOfView - startFOV) > 0.1f)
+        {
+            cinemachineCam.Lens.FieldOfView = Mathf.Lerp(cinemachineCam.Lens.FieldOfView, startFOV, Time.unscaledDeltaTime * 8f);
+            yield return null;
+        }
+        cinemachineCam.Lens.FieldOfView = startFOV;
     }   
 
 
@@ -524,6 +588,8 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
 
         bool touchingNow = CollCount > 0;
+
+        if (!touchingNow && floatingRoutine == null) floatingRoutine = StartCoroutine(CheckFloating());
 
         if (climbEnabled)
         {
@@ -588,6 +654,13 @@ public class PlayerController : MonoBehaviour, IDamageable
         wasTouchingSurface = touchingNow;
     }
 
+    private IEnumerator CheckFloating()
+    {
+        yield return new WaitForSeconds(0.1f);
+        if(climbEnabled && !canClimb) climbEnabled = false;
+        floatingRoutine = null;
+    }
+
     private int XPRequiredForNextLevel()
     {
         return Mathf.FloorToInt(BaseXP * Mathf.Pow(XPLevelMultiplier, Level));
@@ -625,9 +698,9 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void UpdateStatsFromLevel()
     {
-        MaxHealth    = Mathf.FloorToInt(baseMaxHealth * Mathf.Pow(1.05f, Level - 1));
-        turretDamage = Mathf.FloorToInt(baseTurretDamage * Mathf.Pow(1.05f, Level - 1));
-        runSpeed     = baseRunSpeed * Mathf.Pow(1.02f, Level - 1);
+        MaxHealth    = Mathf.FloorToInt(baseMaxHealth * Mathf.Pow(1.1f, Level - 1));
+        turretDamage = Mathf.FloorToInt(baseTurretDamage * Mathf.Pow(1.1f, Level - 1));
+        runSpeed     = baseRunSpeed * Mathf.Pow(1.01f, Level - 1);
         MaxEnergy    = Mathf.FloorToInt(baseMaxEnergy * Mathf.Pow(0.99f, Level - 1));
     }
     
@@ -678,6 +751,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         // Apply random angular spread to the bullet's rotation
         Quaternion spreadRotation = Quaternion.Euler(0, 0, 180f + UnityEngine.Random.Range(-spreadAngle, spreadAngle));
 
+        ShootSource.pitch = UnityEngine.Random.Range(1.19f, 1.21f);
+        ShootSource.PlayOneShot(ShootSource.clip);
+
         // Spawn a bullet at the fire point, rotated correctly
         GameObject projectile = Instantiate(bulletPrefab, firePoint.position, gun.transform.rotation * spreadRotation);
 
@@ -688,6 +764,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         bulletScript.attackTag = "Enemy";
         bulletScript.bulletColor = new Color(1, 0.1f, 0.1f);
         bulletScript.bulletTag = "PlayerBullet";
+        projectile.tag = "PlayerBullet";
 
         // Apply velocity to the bullet so it moves in the shoot direction
         Rigidbody2D rb = projectile.GetComponent<Rigidbody2D>();
@@ -852,14 +929,12 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TakeDamage(int damage)
     {
-        if (isInvincible)
+        if (isInvincible || AOEActive || isHealing)
             return;
 
         FlashRed();
         Health -= damage;
         UpdateHealth();
-
-        if (settings != null) settings.IncrementStats(damageTaken: damage);
 
         StartCoroutine(InvincibilityFrames());
         lastPositionBeforeDeath = transform.position;
@@ -867,16 +942,13 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TakeDamagePercent(float percent)
     {
-        if (isInvincible)
+        if (isInvincible || AOEActive || isHealing)
             return;
             
         FlashRed();
         Health -= Mathf.FloorToInt(Health * percent); 
  
         UpdateHealth();
-
-        if (settings != null)
-            settings.IncrementStats(damageTaken: Mathf.FloorToInt(MaxHealth / percent));
 
         StartCoroutine(InvincibilityFrames());
         lastPositionBeforeDeath = transform.position;
@@ -981,11 +1053,17 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             CamFollow = true;
             isInBossRoom = false;
+
+            TunnelMusicSource.volume = 0.2f;
+            MusicSource.volume = 0.5f;
         }
         if (col.CompareTag("BossArea"))
         {
             CamFollow = true;
             isInBossRoom = true;
+
+            TunnelMusicSource.volume = 0.1f;
+            MusicSource.volume = 0.2f;
         }
         else if (col.CompareTag("RoomView"))
         {
@@ -999,10 +1077,25 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             CamFollow = false;
             isInBossRoom = false;
+
+            TunnelMusicSource.volume = 0.8f;
+            MusicSource.volume = 0.5f;                                          
         }
         else if (col.CompareTag("RoomView"))
         {
             CamFollow = true;
+            isInBossRoom = false;
+
+            TunnelMusicSource.volume = 0.2f;
+            MusicSource.volume = 0.5f;
+        }
+        else if (col.CompareTag("MainArea"))
+        {
+            CamFollow = false;
+            isInBossRoom = false;
+
+            TunnelMusicSource.volume = 0.8f;
+            MusicSource.volume = 0.5f;
         }
     }
 }

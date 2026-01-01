@@ -12,7 +12,7 @@ public class EnemySpawner : MonoBehaviour
 
     void Awake()
     {
-        numberOfEnemies = UnityEngine.Random.Range(2, 6);
+        numberOfEnemies = UnityEngine.Random.Range(1, 4);
         spawnManager = FindFirstObjectByType<SpawnManager>();
         if (spawnManager != null)
             spawnManager.RegisterEnemySpawner(this); 

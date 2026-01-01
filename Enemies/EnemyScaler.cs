@@ -3,7 +3,7 @@ using UnityEngine;
 public class EnemyScaler : MonoBehaviour
 {
     private Transform target;
-    private float maxDistance = 1000f;
+    private float maxDistance = 1800f;
 
     private SpinnerEnemy spinner;
     private RollerEnemy roller;
@@ -27,7 +27,7 @@ public class EnemyScaler : MonoBehaviour
             target = transform;
         }
 
-        float maxScale = 3f;
+        float maxScale = 4f;
         float sqrDist = (target.position - transform.position).sqrMagnitude;
         float sqrMaxDistance = maxDistance * maxDistance;
 
@@ -44,22 +44,22 @@ public class EnemyScaler : MonoBehaviour
         if (spinner != null)
         {
             spinner.damage = Mathf.FloorToInt(spinner.damage * scale);
-            spinner.InitializeHealth(Mathf.FloorToInt(spinner.maxHealth * scale));
+            spinner.InitializeHealth(Mathf.FloorToInt(spinner.maxHealth * scale * 0.8f));
         }
         else if (roller != null)
         {
             roller.damage = Mathf.FloorToInt(roller.damage * scale);
-            roller.InitializeHealth(Mathf.FloorToInt(roller.maxHealth * scale));
+            roller.InitializeHealth(Mathf.FloorToInt(roller.maxHealth * scale * 0.8f));
         }
         else if (explode != null)
         {
             explode.damage = Mathf.FloorToInt(explode.damage * scale);
-            explode.InitializeHealth(Mathf.FloorToInt(explode.maxHealth * scale));
+            explode.InitializeHealth(Mathf.FloorToInt(explode.maxHealth * scale * 0.8f));
         }
         else if (shooter != null)
         {
             shooter.damage = Mathf.FloorToInt(shooter.damage * scale);
-            shooter.InitializeHealth(Mathf.FloorToInt(shooter.maxHealth * scale));
+            shooter.InitializeHealth(Mathf.FloorToInt(shooter.maxHealth * scale * 0.8f));
         }
     }
 }

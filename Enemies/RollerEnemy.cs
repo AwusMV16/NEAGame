@@ -33,20 +33,67 @@ public class RollerEnemy : MonoBehaviour, IDamageable, IEnemy
 
     void FixedUpdate()
     {
-        // Cast a ray upward from the enemy's position to detect the player
-        rayUp = Physics2D.Raycast(transform.position, transform.up, rayLength, playerMask);
+        // // Cast a ray upward from the enemy's position to detect the player
+        // rayUp = Physics2D.Raycast(transform.position, transform.up, rayLength, playerMask);
 
-        // Cast a ray downward from the enemy's position to detect the player
-        rayDown = Physics2D.Raycast(transform.position, -transform.up, rayLength, playerMask);
+        // // Cast a ray downward from the enemy's position to detect the player
+        // rayDown = Physics2D.Raycast(transform.position, -transform.up, rayLength, playerMask);
 
         if (rb.linearVelocityX == 0) // !! fixes issue where enemy gets stuck in corners
             direction = -direction;
 
         // Set the enemy's horizontal velocity based on direction and speed, preserving current vertical velocity
         rb.linearVelocity = new Vector2(direction * moveSpeed, rb.linearVelocity.y);
+        
+        // bool hitPlayer =
+        // (rayUp.collider != null && !rayUp.collider.isTrigger) ||
+        // (rayDown.collider != null && !rayDown.collider.isTrigger);
+
+        
+
+        RaycastHit2D[] hitsUp =
+            Physics2D.RaycastAll(transform.position, transform.up, rayLength, playerMask);
+
+        RaycastHit2D[] hitsDown =
+            Physics2D.RaycastAll(transform.position, -transform.up, rayLength, playerMask);
+
+        bool hitPlayer = false;
+
+        // Check upward hits
+        foreach (var hit in hitsUp)
+        {
+            // if (hit.collider != null && !hit.collider.isTrigger)
+            // {
+            //     hitPlayer = true;
+            //     break;
+            // }
+            if (hit.collider != null)
+            {
+                hitPlayer = true;
+                break;
+            }
+        }
+
+        // Check downward hits
+        if (!hitPlayer)
+        {
+            foreach (var hit in hitsDown)
+            {
+                // if (hit.collider != null && !hit.collider.isTrigger)
+                // {
+                //     hitPlayer = true;
+                //     break;
+                // }
+                if (hit.collider != null)
+                {
+                    hitPlayer = true;
+                    break;
+                }
+            }
+        }
 
         // If a player is detected above or below and the cooldown has passed, flip gravity
-        if ((rayUp.collider != null || rayDown.collider != null) && Time.time >= lastFlipTime + gravityFlipCooldown)
+        if (hitPlayer && Time.time >= lastFlipTime + gravityFlipCooldown)
         {
             // Invert gravity direction
             rb.gravityScale = -rb.gravityScale;

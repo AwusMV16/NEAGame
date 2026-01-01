@@ -56,11 +56,14 @@ public class MainMenu : MonoBehaviour
                 UIManager.ShowSettings();
             };
         }
-    }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        if (ExitButton != null)
+        {
+            ExitButton.clicked += () =>
+            {
+                // Quit
+                Application.Quit();
+            };
+        }
     }
 }

@@ -19,6 +19,10 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
     private BossHealthBar healthBar;
     private Settings settings;
 
+    private AudioSource bossMusicSource;
+    [SerializeField] private float musicFadeSpeed = 1.5f;
+    private bool isDying = false;
+
 
     void Awake()
     {
@@ -28,6 +32,7 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
         spawnManager = FindAnyObjectByType<SpawnManager>();
         healthBar = FindAnyObjectByType<BossHealthBar>();
         settings = FindAnyObjectByType<Settings>();
+        bossMusicSource = GetComponent<AudioSource>();
     }
 
     void Start()
@@ -45,6 +50,17 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
 
     void Update()
     {
+        if (isDying && bossMusicSource != null)
+        {
+            bossMusicSource.volume -= musicFadeSpeed * Time.deltaTime;
+            if (bossMusicSource.volume <= 0f)
+            {
+                bossMusicSource.Stop();
+                Destroy(gameObject);
+            }
+            return; // stop boss logic while dying
+        }
+
         // Increment timer by the time elapsed since last frame
         bulletTimer += Time.deltaTime;
 
@@ -119,7 +135,9 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
             doorManager.OpenDoors();
             healthBar.SetVisible(false);
             if(settings != null) settings.IncrementStats(enemies: 1); 
-            Destroy(gameObject);
+
+            // Destroy(gameObject);
+            isDying = true;
         }
         UpdateHealth();
     }

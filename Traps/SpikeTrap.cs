@@ -39,11 +39,11 @@ public class SpikeTrap : MonoBehaviour
 
     private IEnumerator StartWithRandomDelay()
     {
-        animator.speed = 0; // freeze animation at frame 0
-
+        if (animator != null) animator.speed = 0; // freeze animation at frame 0
+        
         float delay = UnityEngine.Random.Range(0f, 0.5f); // change range as needed
         yield return new WaitForSeconds(delay);
 
-        animator.speed = 1; // start animating
+        if (animator != null) animator.speed = 1; // start animating
     }
 }

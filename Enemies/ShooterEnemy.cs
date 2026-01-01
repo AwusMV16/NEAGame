@@ -28,6 +28,8 @@ public class ShooterEnemy : MonoBehaviour, IDamageable, IEnemy
     private float lastAngle = float.MaxValue;
     private RaycastHit2D ray;
 
+    [SerializeField] private AudioSource ShootSource;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -117,6 +119,10 @@ public class ShooterEnemy : MonoBehaviour, IDamageable, IEnemy
 
     void Shoot()
     {
+
+        ShootSource.pitch = UnityEngine.Random.Range(1.21f, 1.29f);
+        ShootSource.PlayOneShot(ShootSource.clip);
+
         // multiplying quaternions *combines* rotation
         Quaternion rotation = transform.rotation * Quaternion.Euler(0, 0, -90f); 
         // create an instance of the bullet at the firing position

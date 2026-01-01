@@ -16,6 +16,7 @@ public class BossHealthBar : MonoBehaviour
 
     void Start()
     {
+        UpdateBossHealth(1, 1);
         SetVisible(false);
     }
 

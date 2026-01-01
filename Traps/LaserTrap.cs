@@ -34,7 +34,7 @@ public class LaserTrap : MonoBehaviour
     void Update()
     {
         Vector2 origin = transform.position;
-        Vector2 direction = transform.right;
+        Vector2 direction = transform.right * Mathf.Sign(transform.lossyScale.x);
 
         RaycastHit2D hit = Physics2D.Raycast(origin, direction, maxDistance, wallMask);
         float length = hit.collider != null ? hit.distance : maxDistance;

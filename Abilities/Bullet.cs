@@ -15,10 +15,12 @@ public class Bullet : MonoBehaviour
     public Color bulletColor;
     private SpriteRenderer sRenderer;
     public string bulletTag = null;
+    private AudioManager audioManager;
 
     void Awake()
     {
         if (!string.IsNullOrEmpty(bulletTag)) gameObject.tag = bulletTag;
+        audioManager = GameObject.FindGameObjectWithTag("AudioManager").GetComponent<AudioManager>();
     }
 
     void Start()
@@ -37,13 +39,9 @@ public class Bullet : MonoBehaviour
             {
                 if (col.CompareTag(bulletTag)) return;
             }
-            // Destroy this game object (e.g., the projectile)  
-            Destroy(gameObject);
+
             
-            // Create an impact particle effect at this object's position
-            GameObject Particle = Instantiate(Impact, transform.position, quaternion.identity);
-            // Destroy the particle effect after 0.5 seconds
-            Destroy(Particle, 0.5f);  
+
 
             // Check if the collider's tag matches the tag of objects we can attack
             if (col.CompareTag(attackTag))
@@ -52,6 +50,8 @@ public class Bullet : MonoBehaviour
                 IDamageable target = col.GetComponent<IDamageable>();
                 if (target != null) // If the object can take damage
                 {
+                    //Play damage impact Audio
+                    audioManager.PlayImpact(true, transform.position);
                     // Apply damage to the target
                     target.TakeDamage(damage);
 
@@ -64,6 +64,18 @@ public class Bullet : MonoBehaviour
                     Destroy(HitParticle, 1.5f);
                 }
             }
+            else
+            {
+                audioManager.PlayImpact(false, transform.position);
+            }
+
+            // Destroy this game object (e.g., the projectile)  
+            Destroy(gameObject);
+            
+            // Create an impact particle effect at this object's position
+            GameObject Particle = Instantiate(Impact, transform.position, quaternion.identity);
+            // Destroy the particle effect after 0.5 seconds
+            Destroy(Particle, 0.5f);  
         }
     }
     

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class RollerEnemyBoss : MonoBehaviour, IDamageable
@@ -14,7 +15,7 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
     public int Health;
     public int damage;
     private float direction;
-    public Transform player; // set from spawner
+    public GameObject player;
     private Settings settings;
     private Animator anim;
     private bool isAttacking;
@@ -22,6 +23,16 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
     private SpawnManager spawnManager;
     private BossHealthBar healthBar;
     public BossDoorManager doorManager;
+    private LineRenderer line;
+    [SerializeField] private Transform aimTarget;
+    private SpriteRenderer aimTargetVisual;
+    [SerializeField] private float aimDelaySeconds = 1f;
+    private Queue<(float time, Vector2 position)> playerHistory = new Queue<(float, Vector2)>();
+    private Vector2 laserEndPoint;
+
+    private AudioSource bossMusicSource;
+    [SerializeField] private float musicFadeSpeed = 1.5f;
+    private bool isDying = false;
 
     void Awake()
     {
@@ -31,6 +42,11 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
         anim = GetComponent<Animator>();
         spawnManager = FindAnyObjectByType<SpawnManager>();
         healthBar = FindAnyObjectByType<BossHealthBar>();
+        bossMusicSource = GetComponent<AudioSource>();
+        line = GetComponentInChildren<LineRenderer>();
+        player = GameObject.FindWithTag("Player");
+        aimTargetVisual = aimTarget.GetComponent<SpriteRenderer>();
+        line.useWorldSpace = true;
 
         UpdateHealth();
     }
@@ -42,34 +58,191 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
 
         healthBeforeDamage = Health;
         healthBar.SetVisible(true);
+
+        aimTarget.SetParent(null);
+        line.enabled = false;
+        aimTargetVisual.enabled = false;
     }
 
     void FixedUpdate()
     {
+        line.SetPosition(0, transform.position);
+
         // Increment timer
         attackTimer += Time.deltaTime;
 
         // Check if cooldown is finished
         if (attackTimer >= attackCooldown)
         {
-            StartCoroutine(LaserAttack());
-            attackTimer = 0f; // reset cooldown
+            bool playerBelow = Mathf.Abs(player.transform.position.y - transform.position.y) > 5;
+            bool gravityFlipped = rb.gravityScale < 0;
+
+            // // Only attack if player is on opposite side of gravity
+            // if ((gravityFlipped && playerBelow) || (!gravityFlipped && !playerBelow))
+            // {
+            //     StartCoroutine(LaserAttack());
+            //     attackTimer = 0f; // reset cooldown
+            // }
+
+            // Only attack if player is on opposite side of gravity
+            if (playerBelow)
+            {
+                StartCoroutine(LaserAttack());
+                attackTimer = 0f; // reset cooldown
+            }
+            else
+            {
+                HandleNormalBehaviour();
+                if (!isAttacking)
+                {
+                    aimTargetVisual.enabled = true;
+                }
+            }
         }
         else
         {
+            if (!isAttacking)
+            {
+                aimTargetVisual.enabled = true;
+            }
             HandleNormalBehaviour();
+        }
+
+
+        // Constantly check laser hit while laser is active
+        if (isAttacking)
+        {
+            CheckLaserHit();
+        }
+    }
+
+    void Update()
+    {
+        if (player != null)
+        {
+            playerHistory.Enqueue((Time.time, player.transform.position));
+
+            // Remove entries older than we need
+            while (playerHistory.Count > 0 &&
+                Time.time - playerHistory.Peek().time > aimDelaySeconds)
+            {
+                playerHistory.Dequeue();
+            }
+        }
+
+        if (isDying && bossMusicSource != null)
+        {
+            bossMusicSource.volume -= musicFadeSpeed * Time.deltaTime;
+            if (bossMusicSource.volume <= 0f)
+            {
+                bossMusicSource.Stop();
+                Destroy(gameObject);
+            }
+            return; // stop boss logic while dying
+        }
+
+        Vector2 targetPos = player.transform.position;
+        if (playerHistory.Count > 0)
+        {
+            targetPos = playerHistory.Peek().position;
+        }
+
+        Vector2 rot = (targetPos - (Vector2)transform.position).normalized;
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, rot, 50, LayerMask.GetMask("Wall"));
+
+
+        if(hit.collider != null && player != null)
+        {
+            aimTarget.position = hit.point;
         }
     }
 
     private IEnumerator LaserAttack()
     {
-        string[] laserAttacks = { "LaserBeam1", "LaserBeam2", "LaserBeam3", "LaserBeam4", "LaserBeam5", "LaserBeam5" };
-        string chosenAttack = laserAttacks[Random.Range(0, laserAttacks.Length)];
+        // string[] laserAttacks = { "LaserBeam1", "LaserBeam2", "LaserBeam3", "LaserBeam4", "LaserBeam5", "LaserBeam6" };
+        // string chosenAttack = laserAttacks[Random.Range(0, laserAttacks.Length)];
 
         isAttacking = true;
-        anim.Play(chosenAttack, 0, 0f);
-        yield return new WaitForSeconds(3f);
+
+        line.enabled = true;
+
+        aimTargetVisual.enabled = false;
+
+        // anim.Play(chosenAttack, 0, 0f);
+
+        Vector2 start = transform.position;
+        Vector2 end = aimTarget.position;
+        Vector2 dir = (end - start).normalized;
+        float extraLength = 0.5f; // tweak (world units)
+
+        laserEndPoint = end + dir * extraLength;
+        
+
+        line.SetPosition(1, laserEndPoint);
+
+        yield return new WaitForSeconds(2f); //3s
+
+        line.enabled = false;
         isAttacking = false;
+    }
+
+    private void CheckLaserHit()
+    {
+        Vector2 start = transform.position;
+        Vector2 end = laserEndPoint;
+        Vector2 dir = (end - start).normalized;
+        float distance = Vector2.Distance(start, end);
+        float laserWidth = line.startWidth/2;
+        
+        Collider2D hit = Physics2D.OverlapBox(
+            start + dir * distance * 0.5f,
+            new Vector2(distance, laserWidth),
+            Vector2.SignedAngle(Vector2.right, dir),
+            LayerMask.GetMask("Player")
+        );
+
+        if (hit != null)
+        {
+            Debug.Log("hit");
+            hit.GetComponent<IDamageable>()?.TakeDamage(damage);
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        if (aimTarget == null) return;
+
+        Vector2 start = transform.position;
+        Vector2 end = laserEndPoint;
+        Vector2 dir = (end - start).normalized;
+        float distance = Vector2.Distance(start, end);
+        float laserWidth = line != null ? line.startWidth/2 : 0.2f;
+
+        Vector2 center = start + dir * distance * 0.5f;
+        float angle = Vector2.SignedAngle(Vector2.right, dir);
+
+        Gizmos.color = Color.red;
+        DrawRotatedBox(center, new Vector2(distance, laserWidth), angle);
+    }
+
+    void DrawRotatedBox(Vector2 center, Vector2 size, float angle)
+    {
+        Quaternion rot = Quaternion.Euler(0, 0, angle);
+
+        Vector2 half = size * 0.5f;
+
+        Vector2[] corners =
+        {
+            center + (Vector2)(rot * new Vector3(-half.x, -half.y)),
+            center + (Vector2)(rot * new Vector3(-half.x,  half.y)),
+            center + (Vector2)(rot * new Vector3( half.x,  half.y)),
+            center + (Vector2)(rot * new Vector3( half.x, -half.y)),
+        };
+
+        for (int i = 0; i < 4; i++)
+        {
+            Gizmos.DrawLine(corners[i], corners[(i + 1) % 4]);
+        }
     }
 
     private void HandleNormalBehaviour()
@@ -118,6 +291,7 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
         // If health drops to zero or below, destroy
         if (Health <= 0)
         {
+            Destroy(aimTarget.gameObject);
             spawnManager.MarkBossDefeated(1);
             SaveManager.SaveBosses(spawnManager);
             GameObject Particle = Instantiate(explosion, transform.position, Quaternion.identity);
@@ -129,7 +303,7 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
             doorManager.OpenDoors();    
             healthBar.SetVisible(false);
             if (settings != null) settings.IncrementStats(enemies: 1);
-            Destroy(gameObject);
+            isDying = true;
         }
         UpdateHealth();
     }

@@ -4,6 +4,7 @@ public class XPOrb : MonoBehaviour
 {
     private Rigidbody2D rb;
     [SerializeField] private int moveSpeed;
+    [SerializeField] private GameObject particles;
     private bool move;
     private Collider2D PlayerCol;
     void Start()
@@ -37,6 +38,7 @@ public class XPOrb : MonoBehaviour
     {
         if (col.collider.CompareTag("Player"))
         {
+            GameObject Particle = Instantiate(particles, transform.position, Quaternion.identity);
             PlayerController playerScript = col.collider.GetComponent<PlayerController>();
             playerScript.IncreaseXP();
             playerScript.Energy += 1;

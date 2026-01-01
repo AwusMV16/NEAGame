@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class Settings : MonoBehaviour
 {
@@ -14,11 +15,11 @@ public class Settings : MonoBehaviour
     private Label timeSpentLabel;
     private Label enemiesDefeatedLabel;
     private Label damageDealtLabel;
-    private Label damageTakenLabel;
+    private Label deathsLabel;
     private int totalTimeSpent;
     private int totalEnemiesDefeated;
     private int totalDamageDealt;
-    private int totalDamageTaken;
+    private int totalDeaths;
     private float playTimeSeconds;
     private UIManager uiManager;
     private AudioManager audioManager;
@@ -27,6 +28,7 @@ public class Settings : MonoBehaviour
 
     void Start()
     {
+        LoadStats();
         settingsUI = GetComponent<UIDocument>();
         uiManager = FindAnyObjectByType<UIManager>();   
         audioManager = FindAnyObjectByType<AudioManager>();
@@ -95,7 +97,7 @@ public class Settings : MonoBehaviour
             timeSpentLabel = statItems.ElementAt(0).Children().ElementAt(1) as Label;
             enemiesDefeatedLabel = statItems.ElementAt(1).Children().ElementAt(1) as Label;
             damageDealtLabel = statItems.ElementAt(2).Children().ElementAt(1) as Label;
-            damageTakenLabel = statItems.ElementAt(3).Children().ElementAt(1) as Label;
+            deathsLabel = statItems.ElementAt(3).Children().ElementAt(1) as Label;
         }
 
         // totalTimeSpent = 0;
@@ -111,11 +113,27 @@ public class Settings : MonoBehaviour
         playTimeSeconds += Time.deltaTime;
 
         // Update display once per second to avoid excessive updates
-        if(Time.frameCount % 60 == 0)
-        {
-            totalTimeSpent = Mathf.FloorToInt(playTimeSeconds);
+        // if(Time.frameCount % 60 == 0)
+        // {
+        //     totalTimeSpent = Mathf.FloorToInt(playTimeSeconds);
             
-            // Only update the time label
+        //     // Only update the time label
+        //     if (timeSpentLabel != null)
+        //     {
+        //         timeSpentLabel.text = FormatTime(totalTimeSpent);
+        //     }
+        // }
+
+        // Once a full second has passed
+        if (playTimeSeconds >= 1f)
+        {
+            int secondsPassed = Mathf.FloorToInt(playTimeSeconds);
+            playTimeSeconds -= secondsPassed;
+
+            // Use IncrementStats instead of modifying totals directly
+            IncrementStats(timeSpent: secondsPassed);
+
+            // Update only the time label (optional optimisation)
             if (timeSpentLabel != null)
             {
                 timeSpentLabel.text = FormatTime(totalTimeSpent);
@@ -128,25 +146,25 @@ public class Settings : MonoBehaviour
         return volumeSlider.value;
     }
 
-    public void IncrementStats(int timeSpent = 0, int enemies = 0, int damageDealt = 0, int damageTaken = 0)
+    public void IncrementStats(int timeSpent = 0, int enemies = 0, int damageDealt = 0, int deaths = 0)
     {
         // Add each parameter to its respective total
         totalTimeSpent += timeSpent;
         totalEnemiesDefeated += enemies;
         totalDamageDealt += damageDealt;
-        totalDamageTaken += damageTaken;
+        totalDeaths += deaths;
 
         // Update all labels with the new totals
         UpdateDisplay();
+        SaveStats(); // Save immediately after update
     }
 
     private void UpdateDisplay()
     {
-        // Updates all stat labels to display the current totals
-        timeSpentLabel.text = totalTimeSpent.ToString();
-        enemiesDefeatedLabel.text = totalEnemiesDefeated.ToString();
-        damageDealtLabel.text = totalDamageDealt.ToString();
-        damageTakenLabel.text = totalDamageTaken.ToString();
+        if (timeSpentLabel != null) timeSpentLabel.text = FormatTime(totalTimeSpent);
+        if (enemiesDefeatedLabel != null) enemiesDefeatedLabel.text = totalEnemiesDefeated.ToString();
+        if (damageDealtLabel != null) damageDealtLabel.text = totalDamageDealt.ToString();
+        if (deathsLabel != null) deathsLabel.text = totalDeaths.ToString();
     }
     
     private string FormatTime(int seconds)
@@ -164,5 +182,28 @@ public class Settings : MonoBehaviour
             int secs = seconds % 60;
             return $"{hours}:{minutes:D2}:{secs:D2}";
         }
+    }
+
+    public void SaveStats()
+    {
+        var data =  SaveManager.Load();
+        data["TotalTimeSpent"] = totalTimeSpent.ToString();
+        data["TotalEnemiesDefeated"] = totalEnemiesDefeated.ToString();
+        data["TotalDamageDealt"] = totalDamageDealt.ToString();
+        data["TotalDeaths"] = totalDeaths.ToString();
+
+        SaveManager.Save(data);
+    }
+
+    public void LoadStats()
+    {
+        var data = SaveManager.Load();
+
+        if (data.TryGetValue("TotalTimeSpent", out var time)) totalTimeSpent = int.Parse(time);
+        if (data.TryGetValue("TotalEnemiesDefeated", out var enemies)) totalEnemiesDefeated = int.Parse(enemies);
+        if (data.TryGetValue("TotalDamageDealt", out var damage)) totalDamageDealt = int.Parse(damage);
+        if (data.TryGetValue("TotalDeaths", out var deaths)) totalDeaths = int.Parse(deaths);
+
+        UpdateDisplay(); // Update labels to reflect loaded stats
     }
 }
