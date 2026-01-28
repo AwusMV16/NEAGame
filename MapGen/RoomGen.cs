@@ -123,6 +123,7 @@ public class RoomGen : MonoBehaviour
                     newAreaScript.hasCollision = hasCollision;
                     newAreaScript.roomParent = roomParent;
                     newAreaScript.seed = GetNextSeed(seed, remainingChildRooms + 1);
+                    // newAreaScript.seed = seed;
                 }
 
                 StartCoroutine(WaitAndCheck());

@@ -21,6 +21,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     [SerializeField] private GameObject AOEBlastPrefab;
     [SerializeField] private GameObject HealPrefab;
     [SerializeField] private GameObject XpPrefab;
+    [SerializeField] private GameObject WalkDustPrefab;
 
     // ---------- CAMERA & CINEMACHINE ----------
     [Header("Camera Settings")]
@@ -52,6 +53,9 @@ public class PlayerController : MonoBehaviour, IDamageable
     [SerializeField] private float climbCheckDistance = 2f;
     [SerializeField] private float coyoteTime = 0.1f;
     [SerializeField] private float jumpBufferTime = 0.2f;
+    [SerializeField] private float baseGravityScale = 5f;
+    [SerializeField] private float fallGravityMultiplier = 2.5f;
+    [SerializeField] private float lowJumpGravityMultiplier = 2f;
     private float horizontal;
     private float lastHorizontal;
     private bool isUpright;
@@ -62,6 +66,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     public bool climbEnabled = true;
     private bool canClimb = false;
     private bool wasTouchingSurface = false;
+    
 
     // ---------- COMBAT ----------
     [Header("Combat Settings")]
@@ -104,17 +109,17 @@ public class PlayerController : MonoBehaviour, IDamageable
     [SerializeField] private LayerMask climblayerMask;
 
     // ---------- INTERNAL STATE ----------
-    private bool dead;
     private float jumpBufferCounter;
     private float coyoteTimeCounter;
     private float angle;
-    private Vector3 directionToMouse;
-    private bool hasRotated = false;
-    private bool isInvincible = false;
-    private Coroutine damageFlashRoutine;
-    private Vector3 lastPositionBeforeDeath;
+    private bool dead;
+    private bool isInvincible;
     private bool isInBossRoom;
     private bool AOEActive;
+    private bool outOfBounds;
+    private Vector3 directionToMouse;
+    private Vector3 lastPositionBeforeDeath;
+    private Coroutine damageFlashRoutine;
 
     // ---------- RAYS ----------
     private RaycastHit2D rayDown;
@@ -141,6 +146,8 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     void Awake()
     {
+        PlayerService.Register(transform);
+
         Health = MaxHealth;
         baseMaxHealth = MaxHealth;
         baseMaxEnergy = MaxEnergy;
@@ -176,7 +183,13 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         saveTimer += Time.deltaTime;
 
-        Debug.Log(CamFollow);
+        // Debug.Log(outOfBounds);
+        if (outOfBounds)
+        {
+            Health = 0;
+            UpdateHealth();
+        }
+        
 
         if (saveTimer >= saveInterval)
         {
@@ -193,15 +206,17 @@ public class PlayerController : MonoBehaviour, IDamageable
             SaveManager.LoadBosses(spawnManager);
             SaveManager.LoadSpawnAnchor();
             settings.LoadStats();
+            GameObject lastArea = GameObject.FindGameObjectWithTag("LastArea");
+            if (lastArea == null) return;
             loaded = true;
         }
 
         if (Time.timeScale == 0f) return;
-        if (!dead)
+        if (!dead && loaded)
         {
+            PlayerService.UpdatePosition(transform.position);
+            
             horizontal = Input.GetAxisRaw("Horizontal");
-            // horizontal = isHealing ? Input.GetAxisRaw("Horizontal") * 0.25f : Input.GetAxisRaw("Horizontal");
-
             lastHorizontal = Mathf.Abs(horizontal) == 1 ? horizontal : lastHorizontal;
 
             // Check if the player is grounded by casting a horizontal capsule at groundCheck position,
@@ -214,7 +229,14 @@ public class PlayerController : MonoBehaviour, IDamageable
                 climblayerMask                         // Layer to check collisions against
             ) && isUpright;                            // Only count as grounded if the player is upright. **fixes wall hop bug**
 
-            
+            if (!climbEnabled)
+            {
+                WalkDustPrefab.SetActive(isGrounded);
+            }
+            else
+            {
+                WalkDustPrefab.SetActive(rayDown.collider != null);
+            }
 
             // footstep sounds
             if (rayDown.collider != null && Mathf.Abs(horizontal) > 0.1f)
@@ -314,16 +336,25 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         if (CamFollow)
         {
-            Vector3 targetPos;
-            if (isInBossRoom)
-            {
-                targetPos = transform.position + new Vector3(0, 5f, -5f) + lookAheadOffset;
-            }
-            else
-            {
-                targetPos = transform.position + new Vector3(0, 2f, 1) + lookAheadOffset;
-            }
-            MainCamera.transform.position = Vector3.Lerp(MainCamera.transform.position, targetPos, Time.unscaledDeltaTime * 5f); // smooth follow
+            Vector3 orientationDir = Vector3.up;
+            if(isUpsideDown)    orientationDir = Vector3.down;
+            else if(isRightSide)    orientationDir = Vector3.right;
+            else if(isLeftSide)    orientationDir = Vector3.left;
+
+            float distance = isInBossRoom ? 5f : (isRightSide || isLeftSide) ? 4f : 2f;
+            float zOffset = isInBossRoom ? -5f : 0.9f;
+            
+            Vector3 targetPos = 
+                transform.position + 
+                orientationDir * distance +
+                new Vector3(0f, 0f, zOffset) + 
+                lookAheadOffset;
+
+            MainCamera.transform.position = Vector3.Lerp(
+                MainCamera.transform.position,
+                targetPos,
+                Time.unscaledDeltaTime * 5f
+            );
         }
         else
         {
@@ -507,9 +538,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         CamFollow = true; // Snap camera focus to player
 
         float startFOV = cinemachineCam.Lens.FieldOfView;
-        float targetFOV = startFOV * 0.8f;
+        float targetFOV = startFOV * 0.9f;
 
-        Time.timeScale = 0.4f;
+        Time.timeScale = 0.5f;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
         float elapsed = 0f;
@@ -527,7 +558,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
         GameObject blast = Instantiate(AOEBlastPrefab, transform.position, quaternion.identity);
         AOEBlast blastScript = blast.GetComponent<AOEBlast>();
-        blastScript.damage = turretDamage * 5;
+        blastScript.damage = turretDamage * 8;
 
         // Set effect to ignore time scale (code-based fallback for the Animator)
         if (blast.TryGetComponent(out Animator anim)) anim.updateMode = AnimatorUpdateMode.UnscaledTime;
@@ -637,8 +668,6 @@ public class PlayerController : MonoBehaviour, IDamageable
                     }
                 }
             }
-
-            hasRotated = !(CollCount > 0); // Reset rotation flag if not in contact with walls anymore
 
             if (CollCount > 0)
             {
@@ -861,7 +890,7 @@ public class PlayerController : MonoBehaviour, IDamageable
             // Restore default behavior when not climbing
             transform.rotation = Quaternion.Euler(0, 0, 0); // Reset rotation
             body.linearVelocity = new Vector2(horizontal * runSpeed, body.linearVelocity.y); // Move left/right with gravity
-            body.gravityScale = 5; // Re-enable gravity
+            // body.gravityScale = 5; // Re-enable gravity
         }
     }
 
@@ -895,11 +924,38 @@ public class PlayerController : MonoBehaviour, IDamageable
 
             jumpBufferCounter = 0;
         }
+
+        //---
         if (Input.GetButtonUp("Jump") && body.linearVelocityY > 0f)
         {
             body.linearVelocity = new Vector2(body.linearVelocityX, body.linearVelocityY * 0.75f);
 
             coyoteTimeCounter = 0;
+        }
+
+        //---
+        if (!isGrounded)
+        {
+            if (body.linearVelocityY < 0)
+            {
+                // Falling → heavy gravity (kills floatiness)
+                body.gravityScale = baseGravityScale * fallGravityMultiplier;
+            }
+            else if (body.linearVelocityY > 0 && !Input.GetButton("Jump"))
+            {
+                // Jump released early → medium gravity
+                body.gravityScale = baseGravityScale * lowJumpGravityMultiplier;
+            }
+            else
+            {
+                // Rising normally → light gravity
+                body.gravityScale = baseGravityScale;
+            }
+        }
+        else
+        {
+            // On ground → reset gravity
+            body.gravityScale = 5f;
         }
     }
 
@@ -942,7 +998,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     public void TakeDamagePercent(float percent)
     {
-        if (isInvincible || AOEActive || isHealing)
+        if (isInvincible || AOEActive || isHealing) // avoid taking damage during abilities
             return;
             
         FlashRed();
@@ -1000,7 +1056,7 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     void HandleFlip()
     {
-        spriteRenderer.flipX = horizontal < 0;
+        spriteRenderer.flipX = lastHorizontal < 0;
     }
 
     void ToggleClimb()
@@ -1013,17 +1069,14 @@ public class PlayerController : MonoBehaviour, IDamageable
             if (rays[1])
             { //right 
                 RotateAroundCenter(90);
-                hasRotated = true;
             }
             else if (rays[2])
             { //left 
                 RotateAroundCenter(-90);
-                hasRotated = true;
             }
             else if (rays[3])
             { //up
                 RotateAroundCenter(180);
-                hasRotated = true;
             }
         }
     }
@@ -1054,21 +1107,27 @@ public class PlayerController : MonoBehaviour, IDamageable
             CamFollow = true;
             isInBossRoom = false;
 
+            outOfBounds = false;
+
             TunnelMusicSource.volume = 0.2f;
-            MusicSource.volume = 0.5f;
+            MusicSource.volume = 0.3f;
         }
         if (col.CompareTag("BossArea"))
         {
             CamFollow = true;
             isInBossRoom = true;
 
+            outOfBounds = false;
+
             TunnelMusicSource.volume = 0.1f;
-            MusicSource.volume = 0.2f;
+            MusicSource.volume = 0.1f;
         }
         else if (col.CompareTag("RoomView"))
         {
             CamFollow = false;
             isInBossRoom = false;
+
+            outOfBounds = false;
         }
     }
     void OnTriggerExit2D(Collider2D col)
@@ -1078,24 +1137,30 @@ public class PlayerController : MonoBehaviour, IDamageable
             CamFollow = false;
             isInBossRoom = false;
 
+            // outOfBounds = false;
+
             TunnelMusicSource.volume = 0.8f;
-            MusicSource.volume = 0.5f;                                          
+            MusicSource.volume = 0.3f;                                          
         }
         else if (col.CompareTag("RoomView"))
         {
             CamFollow = true;
             isInBossRoom = false;
 
+            // outOfBounds = false;
+
             TunnelMusicSource.volume = 0.2f;
-            MusicSource.volume = 0.5f;
+            MusicSource.volume = 0.3f;
         }
         else if (col.CompareTag("MainArea"))
         {
             CamFollow = false;
             isInBossRoom = false;
 
+            // outOfBounds = true;
+
             TunnelMusicSource.volume = 0.8f;
-            MusicSource.volume = 0.5f;
+            MusicSource.volume = 0.3f;
         }
     }
 }

@@ -7,7 +7,7 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
     [SerializeField] private GameObject explosion;
     [SerializeField] private float rotationSpeed;
     [SerializeField] private float moveSpeed;
-    [SerializeField] private GameObject spinnerPrefab;
+    public GameObject spinnerPrefab;
     [SerializeField] private GameObject XPOrbPrefab;
     [SerializeField] private float cloneHealthLimit;
     [SerializeField] private Animator animator;
@@ -37,7 +37,6 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
         // Store health before any damage is taken
         currentHealth = maxHealth;
         healthBeforeDamage = currentHealth;
-        
     }
 
     // This method is called at a fixed time interval, suitable for physics-related updates
@@ -66,7 +65,8 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
     public void TakeDamage(int damage)
     {
         currentHealth -= damage;
-        animator.SetTrigger("Hit");
+        animator.ResetTrigger("Hit");  // clear queued triggers
+        animator.SetTrigger("Hit");    // immediately trigger damaged animation
 
         settings.IncrementStats(damageDealt: damage); 
 
@@ -75,8 +75,8 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
         {
             GameObject Particle = Instantiate(explosion, transform.position, Quaternion.identity);
             Destroy(Particle, 2f);
-            Destroy(gameObject);
             settings.IncrementStats(enemies: 1); 
+            Destroy(gameObject);
             Replicate(2);  // Create 2 clones
         }
     }
@@ -100,7 +100,6 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
 
                 // Instantiate a clone
                 GameObject child = Instantiate(spinnerPrefab, transform.position + offset, transform.rotation);
-
                 spawnManager?.RegisterRuntimeEnemy(child);
 
                 // Set up the clone's properties
@@ -110,6 +109,7 @@ public class SpinnerEnemy : MonoBehaviour, IDamageable, IEnemy
                 enemy.InitializeHealth(healthBeforeDamage / 2);  // Give clone half health
                 enemy.cloneHealthLimit = cloneHealthLimit;       // Preserve clone limit
                 child.transform.localScale = transform.localScale * 0.8f; // Shrink clone
+                child.GetComponent<SpinnerEnemy>().spinnerPrefab = spinnerPrefab;
             }
         }
         else

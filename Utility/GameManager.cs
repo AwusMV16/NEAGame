@@ -4,7 +4,6 @@ public class GameManager : MonoBehaviour
 {
     void Awake()
     {
-        Debug.Log(GameSession.loadSavedGame);
         var player = FindAnyObjectByType<PlayerController>();
         var spawnManager = FindAnyObjectByType<SpawnManager>();
         var roomGenRoot = FindFirstObjectByType<RoomGenRoot>();

@@ -59,11 +59,6 @@ public class SettingsMainMenu : MonoBehaviour
         var mainmenuButton = root.Q<Button>("MainMenuButton");
         mainmenuButton.style.display = DisplayStyle.None;
 
-
-        // totalTimeSpent = 0;
-        // totalEnemiesDefeated = 0;
-        // totalDamageDealt = 0;
-        // totalDamageTaken = 0;
         playTimeSeconds = 0f;
     }
 

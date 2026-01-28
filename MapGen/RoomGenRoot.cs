@@ -37,9 +37,6 @@ public class RoomGenRoot : MonoBehaviour
         if (transform.childCount == 0)
         {
             count++;
-            // seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-            // seed = GetNextSeed(seed + count, TunnelLength);
-            // SaveManager.SaveSeed();
             
             GameObject roomGenerator = Instantiate( 
                 roomGeneratorPrefab, 

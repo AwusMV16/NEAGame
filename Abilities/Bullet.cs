@@ -40,9 +40,6 @@ public class Bullet : MonoBehaviour
                 if (col.CompareTag(bulletTag)) return;
             }
 
-            
-
-
             // Check if the collider's tag matches the tag of objects we can attack
             if (col.CompareTag(attackTag))
             {

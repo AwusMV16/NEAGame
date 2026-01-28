@@ -53,7 +53,7 @@ public class EnemyScaler : MonoBehaviour
         }
         else if (explode != null)
         {
-            explode.damage = Mathf.FloorToInt(explode.damage * scale);
+            explode.damage = Mathf.FloorToInt(explode.damage * scale * 0.6f);
             explode.InitializeHealth(Mathf.FloorToInt(explode.maxHealth * scale * 0.8f));
         }
         else if (shooter != null)

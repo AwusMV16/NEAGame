@@ -1,7 +1,7 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-public class ExplodeEnemy : MonoBehaviour, IDamageable
+public class ExplodeEnemy : MonoBehaviour, IDamageable, IEnemy
 {
     [SerializeField] private GameObject explosion;
     [SerializeField] private float orbitSpeed;
@@ -85,6 +85,7 @@ public class ExplodeEnemy : MonoBehaviour, IDamageable
     public void TakeDamage(int dmg)
     {
         currentHealth -= dmg;
+        animator.SetTrigger("Hit");
 
         if(settings != null) settings.IncrementStats(damageDealt: dmg); 
         // If health drops to zero or below, destroy.

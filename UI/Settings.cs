@@ -100,10 +100,6 @@ public class Settings : MonoBehaviour
             deathsLabel = statItems.ElementAt(3).Children().ElementAt(1) as Label;
         }
 
-        // totalTimeSpent = 0;
-        // totalEnemiesDefeated = 0;
-        // totalDamageDealt = 0;
-        // totalDamageTaken = 0;
         playTimeSeconds = 0f;
     }
 
@@ -111,18 +107,6 @@ public class Settings : MonoBehaviour
     {
         // Increment time every frame
         playTimeSeconds += Time.deltaTime;
-
-        // Update display once per second to avoid excessive updates
-        // if(Time.frameCount % 60 == 0)
-        // {
-        //     totalTimeSpent = Mathf.FloorToInt(playTimeSeconds);
-            
-        //     // Only update the time label
-        //     if (timeSpentLabel != null)
-        //     {
-        //         timeSpentLabel.text = FormatTime(totalTimeSpent);
-        //     }
-        // }
 
         // Once a full second has passed
         if (playTimeSeconds >= 1f)

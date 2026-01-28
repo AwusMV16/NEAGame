@@ -136,7 +136,6 @@ public class SpinnerBoss : MonoBehaviour, IDamageable
             healthBar.SetVisible(false);
             if(settings != null) settings.IncrementStats(enemies: 1); 
 
-            // Destroy(gameObject);
             isDying = true;
         }
         UpdateHealth();

@@ -19,12 +19,14 @@ public class RollerEnemy : MonoBehaviour, IDamageable, IEnemy
     public int damage = 20;
     private float direction;
     private Settings settings;
+    private Animator animator;
 
     void Start()
     {
         // Get the Rigidbody2D component attached to this GameObject
         rb = GetComponent<Rigidbody2D>();
         settings = FindAnyObjectByType<Settings>();
+        animator = GetComponent<Animator>();
 
         // Set initial movement direction randomly to left (-1) or right (1)
         direction = Random.value < 0.5f ? -1f : 1f;
@@ -112,6 +114,7 @@ public class RollerEnemy : MonoBehaviour, IDamageable, IEnemy
     public void TakeDamage(int damage)
     {
         currentHealth -= damage;
+        animator.SetTrigger("Hit");
 
         settings.IncrementStats(damageDealt: damage); 
 

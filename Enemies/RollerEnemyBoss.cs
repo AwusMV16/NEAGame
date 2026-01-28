@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 public class RollerEnemyBoss : MonoBehaviour, IDamageable
 {
@@ -17,7 +18,6 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
     private float direction;
     public GameObject player;
     private Settings settings;
-    private Animator anim;
     private bool isAttacking;
     private int healthBeforeDamage;
     private SpawnManager spawnManager;
@@ -33,19 +33,20 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
     private AudioSource bossMusicSource;
     [SerializeField] private float musicFadeSpeed = 1.5f;
     private bool isDying = false;
+    private Light2D aimTargetLight;
 
     void Awake()
     {
         // Get the Rigidbody2D component attached to this GameObject
         rb = GetComponent<Rigidbody2D>();
         settings = FindAnyObjectByType<Settings>();
-        anim = GetComponent<Animator>();
         spawnManager = FindAnyObjectByType<SpawnManager>();
         healthBar = FindAnyObjectByType<BossHealthBar>();
         bossMusicSource = GetComponent<AudioSource>();
         line = GetComponentInChildren<LineRenderer>();
         player = GameObject.FindWithTag("Player");
         aimTargetVisual = aimTarget.GetComponent<SpriteRenderer>();
+        aimTargetLight = aimTarget.GetComponentInChildren<Light2D>();
         line.useWorldSpace = true;
 
         UpdateHealth();
@@ -62,6 +63,7 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
         aimTarget.SetParent(null);
         line.enabled = false;
         aimTargetVisual.enabled = false;
+        aimTargetLight.enabled = false;
     }
 
     void FixedUpdate()
@@ -75,14 +77,6 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
         if (attackTimer >= attackCooldown)
         {
             bool playerBelow = Mathf.Abs(player.transform.position.y - transform.position.y) > 5;
-            bool gravityFlipped = rb.gravityScale < 0;
-
-            // // Only attack if player is on opposite side of gravity
-            // if ((gravityFlipped && playerBelow) || (!gravityFlipped && !playerBelow))
-            // {
-            //     StartCoroutine(LaserAttack());
-            //     attackTimer = 0f; // reset cooldown
-            // }
 
             // Only attack if player is on opposite side of gravity
             if (playerBelow)
@@ -96,6 +90,7 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
                 if (!isAttacking)
                 {
                     aimTargetVisual.enabled = true;
+                    aimTargetLight.enabled = true;
                 }
             }
         }
@@ -104,6 +99,7 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
             if (!isAttacking)
             {
                 aimTargetVisual.enabled = true;
+                aimTargetLight.enabled = true;
             }
             HandleNormalBehaviour();
         }
@@ -159,16 +155,11 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
 
     private IEnumerator LaserAttack()
     {
-        // string[] laserAttacks = { "LaserBeam1", "LaserBeam2", "LaserBeam3", "LaserBeam4", "LaserBeam5", "LaserBeam6" };
-        // string chosenAttack = laserAttacks[Random.Range(0, laserAttacks.Length)];
-
         isAttacking = true;
 
         line.enabled = true;
 
         aimTargetVisual.enabled = false;
-
-        // anim.Play(chosenAttack, 0, 0f);
 
         Vector2 start = transform.position;
         Vector2 end = aimTarget.position;
@@ -272,7 +263,6 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
         int prevSegment = Mathf.FloorToInt((prevHealth - 1) / segmentSize);
 
         Health -= damage;
-        // anim.SetTrigger("Hit");
 
         if (settings != null) settings.IncrementStats(damageDealt: damage);
 
@@ -342,5 +332,10 @@ public class RollerEnemyBoss : MonoBehaviour, IDamageable
             IDamageable target = col.GetComponent<IDamageable>();
             target?.TakeDamage(damage);
         }
+    }
+
+    void OnDestroy()
+    {
+        Destroy(aimTarget.gameObject);
     }
 }

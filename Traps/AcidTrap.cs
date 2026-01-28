@@ -39,7 +39,7 @@ public class AcidTrap : MonoBehaviour
                 // player.TakeDamage(damage);
 
                 PlayerController player = other.GetComponent<PlayerController>();
-                player.TakeDamagePercent(50);
+                player.TakeDamagePercent(100);
 
                 // reset the damage tick timer
                 lastDamageTime = Time.time;
